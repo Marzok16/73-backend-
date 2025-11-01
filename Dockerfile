@@ -34,5 +34,6 @@ RUN python manage.py collectstatic --noinput || true
 EXPOSE 8000
 
 # Run gunicorn
-CMD ["gunicorn", "college_backend.wsgi:application", "--bind", "0.0.0.0:$PORT"]
+# Use PORT from environment variable, default to 8000
+CMD gunicorn college_backend.wsgi:application --bind 0.0.0.0:${PORT:-8000}
 
