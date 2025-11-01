@@ -1,0 +1,17 @@
+asgiref==3.9.2
+Django==5.2.6
+django-cors-headers==4.9.0
+django-filter==25.1
+djangorestframework==3.16.1
+dj-database-url==2.1.0
+gunicorn==21.2.0
+pillow==11.3.0
+psycopg2-binary==2.9.10
+python-decouple==3.8
+sqlparse==0.5.3
+tzdata==2025.2
+weasyprint>=62.0
+cairosvg==2.7.1
+tinycss2>=1.4.0
+cssselect2>=0.8.0
+whitenoise==6.7.0

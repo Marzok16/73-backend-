@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>كتاب الذكريات</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Cairo:wght@400;600;700&display=swap');
+
+    @page {
+      size: A4;
+      margin: 18mm;
+    }
+
+    html, body {
+      font-family: 'Cairo', 'Amiri', sans-serif;
+      direction: rtl;
+      color: #111827;
+      margin: 0;
+      padding: 0;
+    }
+
+    h1, h2, h3 { font-family: 'Amiri', serif; }
+
+    .cover {
+      page-break-after: always;
+      text-align: center;
+      padding: 40px 20px;
+      background: linear-gradient(135deg, #f3f4f6 0%, #ffffff 100%);
+      border-radius: 10px;
+      border: 1px solid #e5e7eb;
+    }
+
+    .cover h1 { 
+      font-size: 34px; 
+      margin: 0 0 8px 0; 
+    }
+    
+    .cover p { 
+      color: #4b5563; 
+      margin: 0; 
+    }
+
+    .section {
+      page-break-inside: avoid;
+      break-inside: avoid;
+      margin-bottom: 30px;
+    }
+
+    .section-header {
+      page-break-after: avoid;
+      page-break-inside: avoid;
+      background: linear-gradient(135deg, #3B82F6 0%, #10B981 100%);
+      color: white;
+      padding: 16px 24px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      text-align: center;
+    }
+
+    .section-header h2 {
+      margin: 0;
+      font-size: 24px;
+      font-weight: 700;
+    }
+
+    .section-description {
+      font-size: 14px;
+      color: rgba(255, 255, 255, 0.9);
+      margin-top: 4px;
+    }
+
+    .photo-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .photo-item {
+      page-break-inside: avoid;
+      break-inside: avoid;
+      background: #ffffff;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .photo-item img {
+      width: 100%;
+      height: 200px;
+      object-fit: cover;
+      border-radius: 6px;
+      margin-bottom: 8px;
+      display: block;
+    }
+
+    .photo-title {
+      font-size: 16px;
+      font-weight: 600;
+      margin: 0 0 4px 0;
+      color: #111827;
+    }
+
+    .photo-description {
+      font-size: 12px;
+      color: #6b7280;
+      line-height: 1.6;
+      white-space: pre-wrap;
+      margin: 0;
+    }
+
+    .empty-section {
+      text-align: center;
+      color: #6b7280;
+      padding: 20px;
+      font-style: italic;
+    }
+
+    .category-name {
+      font-size: 20px;
+      font-weight: 600;
+      color: #374151;
+      margin: 24px 0 12px 0;
+      padding-bottom: 8px;
+      border-bottom: 2px solid #e5e7eb;
+    }
+
+    .category-description {
+      font-size: 14px;
+      color: #6b7280;
+      margin-bottom: 16px;
+      font-style: italic;
+    }
+
+    .colleague-card {
+      page-break-inside: avoid;
+      break-inside: avoid;
+      background: #ffffff;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 16px;
+      overflow: hidden;
+    }
+
+    .colleague-header {
+      display: block;
+      margin-bottom: 12px;
+    }
+
+    .colleague-photo-container {
+      float: right;
+      margin-left: 16px;
+      margin-bottom: 12px;
+    }
+
+    .colleague-photo {
+      width: 100px;
+      height: 100px;
+      border-radius: 8px;
+      object-fit: cover;
+      border: 2px solid #e5e7eb;
+      display: block;
+    }
+
+    .colleague-name {
+      font-size: 18px;
+      font-weight: 700;
+      color: #111827;
+      margin: 0 0 8px 0;
+      display: block;
+    }
+
+    .colleague-featured {
+      display: inline-block;
+      background: #fef3c7;
+      color: #92400e;
+      padding: 3px 10px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 600;
+      margin-left: 8px;
+    }
+
+    .colleague-status {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+
+    .status-active {
+      background: #d1fae5;
+      color: #065f46;
+    }
+
+    .status-promoted {
+      background: #dbeafe;
+      color: #1e40af;
+    }
+
+    .status-deceased {
+      background: #f3f4f6;
+      color: #374151;
+    }
+
+    .colleague-details {
+      clear: both;
+      margin-top: 12px;
+      font-size: 13px;
+      color: #374151;
+      line-height: 1.8;
+    }
+
+    .colleague-detail-row {
+      margin-bottom: 6px;
+      padding: 4px 0;
+      border-bottom: 1px solid #f3f4f6;
+    }
+
+    .colleague-detail-row:last-child {
+      border-bottom: none;
+    }
+
+    .colleague-detail-label {
+      font-weight: 600;
+      color: #6b7280;
+      display: inline-block;
+      min-width: 120px;
+    }
+
+    .colleague-detail-value {
+      color: #111827;
+    }
+
+    .colleague-description {
+      font-size: 13px;
+      color: #4b5563;
+      line-height: 1.7;
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid #e5e7eb;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    }
+
+    .colleague-achievements {
+      font-size: 13px;
+      color: #4b5563;
+      line-height: 1.7;
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid #e5e7eb;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    }
+
+    .colleague-achievements-label {
+      font-weight: 600;
+      color: #6b7280;
+      margin-bottom: 6px;
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <div class="cover">
+    <h1>كتاب الذكريات الجامعية</h1>
+    <p>رحلة الذكريات واللقاءات</p>
+  </div>
+
+  <!-- Memory Photos Section (صور تذكارية) -->
+  <div class="section">
+    <div class="section-header">
+      <h2>الصور التذكارية</h2>
+      <div class="section-description">ذكرياتنا الجميلة من أيام الجامعة</div>
+    </div>
+
+    {% if memory_categories %}
+      {% for category in memory_categories %}
+        <div class="category-name">{{ category.name }}</div>
+        {% if category.description %}
+          <div class="category-description">{{ category.description }}</div>
+        {% endif %}
+
+        {% if category.photos.all %}
+          <div class="photo-grid">
+            {% for photo in category.photos.all %}
+              <div class="photo-item">
+                {% if photo.image %}
+                  <img src="{{ base_url }}{{ photo.image.url }}" alt="{{ photo.title_ar }}" />
+                {% endif %}
+                <h3 class="photo-title">{{ photo.title_ar }}</h3>
+                {% if photo.description_ar %}
+                  <p class="photo-description">{{ photo.description_ar }}</p>
+                {% endif %}
+              </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <div class="empty-section">لا توجد صور في هذه الفئة</div>
+        {% endif %}
+      {% endfor %}
+    {% else %}
+      <div class="empty-section">لا توجد فئات أو صور تذكارية. يرجى إضافة الصور عبر لوحة التحكم.</div>
+    {% endif %}
+  </div>
+
+  <!-- Meeting Photos Section (اللقاءات) -->
+  <div class="section">
+    <div class="section-header">
+      <h2>اللقاءات</h2>
+      <div class="section-description">صور اللقاءات والمناسبات الجامعية</div>
+    </div>
+
+    {% if meeting_categories %}
+      {% for category in meeting_categories %}
+        <div class="category-name">{{ category.name }}</div>
+        {% if category.description %}
+          <div class="category-description">{{ category.description }}</div>
+        {% endif %}
+
+        {% if category.photos.all %}
+          <div class="photo-grid">
+            {% for photo in category.photos.all %}
+              <div class="photo-item">
+                {% if photo.image %}
+                  <img src="{{ base_url }}{{ photo.image.url }}" alt="{{ photo.title_ar }}" />
+                {% endif %}
+                <h3 class="photo-title">{{ photo.title_ar }}</h3>
+                {% if photo.description_ar %}
+                  <p class="photo-description">{{ photo.description_ar }}</p>
+                {% endif %}
+              </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <div class="empty-section">لا توجد صور في هذه الفئة</div>
+        {% endif %}
+      {% endfor %}
+    {% else %}
+      <div class="empty-section">لا توجد فئات أو صور للقاءات. يرجى إضافة الصور عبر لوحة التحكم.</div>
+    {% endif %}
+  </div>
+
+  <!-- Colleagues Section (الزملاء) -->
+  <div class="section">
+    <div class="section-header">
+      <h2>الزملاء</h2>
+      <div class="section-description">زملاء دفعة الهندسة المدنية 1973</div>
+    </div>
+
+    {% if colleagues %}
+      {% for colleague in colleagues %}
+        <div class="colleague-card">
+          <div class="colleague-header">
+            {% if colleague.photo %}
+              <div class="colleague-photo-container">
+                <img src="{{ base_url }}{{ colleague.photo.url }}" alt="{{ colleague.name }}" class="colleague-photo" />
+              </div>
+            {% endif %}
+            <h3 class="colleague-name">
+              {{ colleague.name }}
+              {% if colleague.is_featured %}
+                <span class="colleague-featured">⭐ مميز</span>
+              {% endif %}
+            </h3>
+            {% if colleague.get_status_display %}
+              <span class="colleague-status status-{{ colleague.status }}">
+                {{ colleague.get_status_display }}
+              </span>
+            {% endif %}
+          </div>
+          
+          <div class="colleague-details">
+            {% if colleague.position %}
+              <div class="colleague-detail-row">
+                <span class="colleague-detail-label">المنصب:</span>
+                <span class="colleague-detail-value">{{ colleague.position }}</span>
+              </div>
+            {% endif %}
+            {% if colleague.current_workplace %}
+              <div class="colleague-detail-row">
+                <span class="colleague-detail-label">جهة العمل:</span>
+                <span class="colleague-detail-value">{{ colleague.current_workplace }}</span>
+              </div>
+            {% endif %}
+            {% if colleague.graduation_year %}
+              <div class="colleague-detail-row">
+                <span class="colleague-detail-label">سنة التخرج:</span>
+                <span class="colleague-detail-value">{{ colleague.graduation_year }}</span>
+              </div>
+            {% endif %}
+            {% if colleague.contact_info %}
+              <div class="colleague-detail-row">
+                <span class="colleague-detail-label">معلومات التواصل:</span>
+                <span class="colleague-detail-value">{{ colleague.contact_info }}</span>
+              </div>
+            {% endif %}
+          </div>
+          
+          {% if colleague.description %}
+            <div class="colleague-description">{{ colleague.description }}</div>
+          {% endif %}
+          
+          {% if colleague.achievements %}
+            <div class="colleague-achievements">
+              <span class="colleague-achievements-label">الإنجازات:</span>
+              {{ colleague.achievements }}
+            </div>
+          {% endif %}
+        </div>
+      {% endfor %}
+    {% else %}
+      <div class="empty-section">لا توجد بيانات للزملاء. يرجى إضافة الزملاء عبر لوحة التحكم.</div>
+    {% endif %}
+  </div>
+</body>
+</html>

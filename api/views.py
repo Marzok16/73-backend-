@@ -1,0 +1,482 @@
+from django.shortcuts import render
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
+from rest_framework import status
+from rest_framework.viewsets import ModelViewSet
+from rest_framework.permissions import IsAuthenticated, IsAdminUser
+from rest_framework.decorators import action
+from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework.filters import SearchFilter, OrderingFilter
+from .models import MemoryCategory, MemoryPhoto, MeetingCategory, MeetingPhoto, Colleague
+from .serializers import (
+    MemoryCategorySerializer, MemoryPhotoSerializer, MemoryCategoryDetailSerializer,
+    MeetingCategorySerializer, MeetingPhotoSerializer, MeetingCategoryDetailSerializer,
+    ColleagueSerializer
+)
+from django.contrib.auth import authenticate
+from django.contrib.auth.models import User
+from rest_framework.authtoken.models import Token
+import os
+
+# Create your views here.
+
+@api_view(['GET'])
+def hello_world(request):
+    """
+    Simple API endpoint to test the connection between frontend and backend
+    """
+    return Response({
+        'message': 'Hello from Django Backend!',
+        'status': 'success',
+        'data': {
+            'version': '1.0.0',
+            'timestamp': '2025-09-30'
+        }
+    }, status=status.HTTP_200_OK)
+
+@api_view(['GET'])
+def health_check(request):
+    """
+    Health check endpoint
+    """
+    return Response({
+        'status': 'healthy',
+        'service': 'college_backend'
+    }, status=status.HTTP_200_OK)
+
+@api_view(['POST'])
+def admin_login(request):
+    """
+    Authenticate against Django users and allow ONLY superusers.
+    Expected body: { "username": string, "password": string }
+    Returns 200 with { username } if valid superuser; 401 otherwise.
+    """
+    username = request.data.get('username')
+    password = request.data.get('password')
+
+    if not username or not password:
+        return Response({
+            'detail': 'Username and password are required.'
+        }, status=status.HTTP_400_BAD_REQUEST)
+
+    user = authenticate(username=username, password=password)
+
+    if user is None:
+        return Response({ 'detail': 'Invalid credentials.' }, status=status.HTTP_401_UNAUTHORIZED)
+
+    if not user.is_active:
+        return Response({ 'detail': 'User account is disabled.' }, status=status.HTTP_403_FORBIDDEN)
+
+    if not user.is_superuser:
+        return Response({ 'detail': 'Admin access denied. Superuser required.' }, status=status.HTTP_403_FORBIDDEN)
+
+    # Issue or retrieve an API token for the authenticated admin user
+    token, _ = Token.objects.get_or_create(user=user)
+
+    return Response({ 'username': user.username, 'is_superuser': True, 'token': token.key }, status=status.HTTP_200_OK)
+
+class MemoryCategoryViewSet(ModelViewSet):
+    """
+    ViewSet for managing memory categories (صور تذكارية)
+    """
+    queryset = MemoryCategory.objects.all()
+    serializer_class = MemoryCategorySerializer
+    permission_classes = [IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+    search_fields = ['name', 'description']
+    ordering_fields = ['name', 'created_at']
+    ordering = ['name']
+    
+    def get_serializer_class(self):
+        if self.action == 'retrieve':
+            return MemoryCategoryDetailSerializer
+        return MemoryCategorySerializer
+    
+    def get_permissions(self):
+        """
+        Instantiates and returns the list of permissions that this view requires.
+        """
+        if self.action in ['list', 'retrieve', 'with_photos']:
+            permission_classes = []
+        else:
+            permission_classes = [IsAdminUser]
+        return [permission() for permission in permission_classes]
+    
+    def destroy(self, request, *args, **kwargs):
+        """Override destroy to log file deletion"""
+        instance = self.get_object()
+        photos_count = instance.photos.count()
+        category_name = instance.name
+        
+        # Perform the deletion (signals will handle file cleanup)
+        response = super().destroy(request, *args, **kwargs)
+        
+        # Log the deletion
+        print(f"Memory Category '{category_name}' deleted with {photos_count} photos and their files")
+        
+        return response
+    
+    @action(detail=True, methods=['get'])
+    def photos(self, request, pk=None):
+        """Get all photos for a specific memory category"""
+        category = self.get_object()
+        photos = category.photos.all()
+        serializer = MemoryPhotoSerializer(photos, many=True, context={'request': request})
+        return Response(serializer.data)
+    
+    @action(detail=False, methods=['get'], permission_classes=[])
+    def with_photos(self, request):
+        """Get all active memory categories with their photos"""
+        categories = self.get_queryset()
+        serializer = MemoryCategoryDetailSerializer(categories, many=True, context={'request': request})
+        return Response(serializer.data)
+
+
+class MemoryPhotoViewSet(ModelViewSet):
+    """
+    ViewSet for managing memory photos
+    """
+    queryset = MemoryPhoto.objects.all()
+    serializer_class = MemoryPhotoSerializer
+    permission_classes = [IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+    filterset_fields = ['category', 'is_featured']
+    search_fields = ['title_ar', 'description_ar']
+    ordering_fields = ['title_ar', 'created_at']
+    ordering = ['-created_at']
+    
+    def get_permissions(self):
+        """
+        Instantiates and returns the list of permissions that this view requires.
+        """
+        if self.action in ['list', 'retrieve']:
+            permission_classes = []
+        else:
+            permission_classes = [IsAdminUser]
+        return [permission() for permission in permission_classes]
+    
+    def perform_create(self, serializer):
+        serializer.save(uploaded_by=self.request.user)
+    
+    @action(detail=False, methods=['post'], permission_classes=[IsAdminUser])
+    def bulk_upload(self, request):
+        """
+        Bulk upload multiple memory photos with optional names and descriptions
+        """
+        try:
+            category_id = request.data.get('category')
+            if not category_id:
+                return Response({
+                    'error': 'Category ID is required'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Verify category exists
+            try:
+                category = MemoryCategory.objects.get(id=category_id)
+            except MemoryCategory.DoesNotExist:
+                return Response({
+                    'error': 'Category not found'
+                }, status=status.HTTP_404_NOT_FOUND)
+            
+            # Get uploaded files
+            uploaded_files = request.FILES.getlist('images')
+            if not uploaded_files:
+                return Response({
+                    'error': 'No images provided'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Get metadata for each image (optional)
+            photo_metadata = {}
+            for key, value in request.data.items():
+                if key.startswith('metadata_'):
+                    # Extract the index from the key (e.g., metadata_0_title)
+                    parts = key.split('_')
+                    if len(parts) >= 3:
+                        index = parts[1]
+                        field = '_'.join(parts[2:])
+                        if index not in photo_metadata:
+                            photo_metadata[index] = {}
+                        photo_metadata[index][field] = value
+            
+            created_photos = []
+            errors = []
+            
+            for i, image_file in enumerate(uploaded_files):
+                try:
+                    # Get metadata for this specific image
+                    metadata = photo_metadata.get(str(i), {})
+                    
+                    # Prepare photo data
+                    photo_data = {
+                        'category': category_id,
+                        'title_ar': metadata.get('title', f'صورة تذكارية {i + 1}'),  # Default title if not provided
+                        'description_ar': metadata.get('description', ''),  # Empty description if not provided
+                        'is_featured': metadata.get('is_featured', 'false').lower() == 'true',
+                        'image': image_file
+                    }
+                    
+                    # Create the photo
+                    serializer = MemoryPhotoSerializer(data=photo_data, context={'request': request})
+                    if serializer.is_valid():
+                        photo = serializer.save(uploaded_by=request.user)
+                        created_photos.append(MemoryPhotoSerializer(photo, context={'request': request}).data)
+                    else:
+                        errors.append({
+                            'image_index': i,
+                            'image_name': image_file.name,
+                            'errors': serializer.errors
+                        })
+                        
+                except Exception as e:
+                    errors.append({
+                        'image_index': i,
+                        'image_name': image_file.name if hasattr(image_file, 'name') else f'Image {i}',
+                        'error': str(e)
+                    })
+            
+            response_data = {
+                'success': True,
+                'created_count': len(created_photos),
+                'total_count': len(uploaded_files),
+                'created_photos': created_photos
+            }
+            
+            if errors:
+                response_data['errors'] = errors
+                response_data['error_count'] = len(errors)
+            
+            return Response(response_data, status=status.HTTP_201_CREATED)
+            
+        except Exception as e:
+            return Response({
+                'error': f'Bulk upload failed: {str(e)}'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class MeetingCategoryViewSet(ModelViewSet):
+    """
+    ViewSet for managing meeting categories (اللقاءات)
+    """
+    queryset = MeetingCategory.objects.all()
+    serializer_class = MeetingCategorySerializer
+    permission_classes = [IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+    search_fields = ['name', 'description']
+    ordering_fields = ['name', 'created_at']
+    ordering = ['name']
+    
+    def get_serializer_class(self):
+        if self.action == 'retrieve':
+            return MeetingCategoryDetailSerializer
+        return MeetingCategorySerializer
+    
+    def get_permissions(self):
+        """
+        Instantiates and returns the list of permissions that this view requires.
+        """
+        if self.action in ['list', 'retrieve', 'with_photos']:
+            permission_classes = []
+        else:
+            permission_classes = [IsAdminUser]
+        return [permission() for permission in permission_classes]
+    
+    def destroy(self, request, *args, **kwargs):
+        """Override destroy to log file deletion"""
+        instance = self.get_object()
+        photos_count = instance.photos.count()
+        category_name = instance.name
+        
+        # Perform the deletion (signals will handle file cleanup)
+        response = super().destroy(request, *args, **kwargs)
+        
+        # Log the deletion
+        print(f"Meeting Category '{category_name}' deleted with {photos_count} photos and their files")
+        
+        return response
+    
+    @action(detail=True, methods=['get'])
+    def photos(self, request, pk=None):
+        """Get all photos for a specific meeting category"""
+        category = self.get_object()
+        photos = category.photos.all()
+        serializer = MeetingPhotoSerializer(photos, many=True, context={'request': request})
+        return Response(serializer.data)
+    
+    @action(detail=False, methods=['get'], permission_classes=[])
+    def with_photos(self, request):
+        """Get all active meeting categories with their photos"""
+        categories = self.get_queryset()
+        serializer = MeetingCategoryDetailSerializer(categories, many=True, context={'request': request})
+        return Response(serializer.data)
+
+
+class MeetingPhotoViewSet(ModelViewSet):
+    """
+    ViewSet for managing meeting photos
+    """
+    queryset = MeetingPhoto.objects.all()
+    serializer_class = MeetingPhotoSerializer
+    permission_classes = [IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+    filterset_fields = ['category', 'is_featured']
+    search_fields = ['title_ar', 'description_ar']
+    ordering_fields = ['title_ar', 'created_at']
+    ordering = ['-created_at']
+    
+    def get_permissions(self):
+        """
+        Instantiates and returns the list of permissions that this view requires.
+        """
+        if self.action in ['list', 'retrieve']:
+            permission_classes = []
+        else:
+            permission_classes = [IsAdminUser]
+        return [permission() for permission in permission_classes]
+    
+    def perform_create(self, serializer):
+        serializer.save(uploaded_by=self.request.user)
+    
+    @action(detail=False, methods=['post'], permission_classes=[IsAdminUser])
+    def bulk_upload(self, request):
+        """
+        Bulk upload multiple meeting photos with optional names and descriptions
+        """
+        try:
+            category_id = request.data.get('category')
+            if not category_id:
+                return Response({
+                    'error': 'Category ID is required'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Verify category exists
+            try:
+                category = MeetingCategory.objects.get(id=category_id)
+            except MeetingCategory.DoesNotExist:
+                return Response({
+                    'error': 'Category not found'
+                }, status=status.HTTP_404_NOT_FOUND)
+            
+            # Get uploaded files
+            uploaded_files = request.FILES.getlist('images')
+            if not uploaded_files:
+                return Response({
+                    'error': 'No images provided'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Get metadata for each image (optional)
+            photo_metadata = {}
+            for key, value in request.data.items():
+                if key.startswith('metadata_'):
+                    # Extract the index from the key (e.g., metadata_0_title)
+                    parts = key.split('_')
+                    if len(parts) >= 3:
+                        index = parts[1]
+                        field = '_'.join(parts[2:])
+                        if index not in photo_metadata:
+                            photo_metadata[index] = {}
+                        photo_metadata[index][field] = value
+            
+            created_photos = []
+            errors = []
+            
+            for i, image_file in enumerate(uploaded_files):
+                try:
+                    # Get metadata for this specific image
+                    metadata = photo_metadata.get(str(i), {})
+                    
+                    # Prepare photo data
+                    photo_data = {
+                        'category': category_id,
+                        'title_ar': metadata.get('title', f'صورة لقاء {i + 1}'),  # Default title if not provided
+                        'description_ar': metadata.get('description', ''),  # Empty description if not provided
+                        'is_featured': metadata.get('is_featured', 'false').lower() == 'true',
+                        'image': image_file
+                    }
+                    
+                    # Create the photo
+                    serializer = MeetingPhotoSerializer(data=photo_data, context={'request': request})
+                    if serializer.is_valid():
+                        photo = serializer.save(uploaded_by=request.user)
+                        created_photos.append(MeetingPhotoSerializer(photo, context={'request': request}).data)
+                    else:
+                        errors.append({
+                            'image_index': i,
+                            'image_name': image_file.name,
+                            'errors': serializer.errors
+                        })
+                        
+                except Exception as e:
+                    errors.append({
+                        'image_index': i,
+                        'image_name': image_file.name if hasattr(image_file, 'name') else f'Image {i}',
+                        'error': str(e)
+                    })
+            
+            response_data = {
+                'success': True,
+                'created_count': len(created_photos),
+                'total_count': len(uploaded_files),
+                'created_photos': created_photos
+            }
+            
+            if errors:
+                response_data['errors'] = errors
+                response_data['error_count'] = len(errors)
+            
+            return Response(response_data, status=status.HTTP_201_CREATED)
+            
+        except Exception as e:
+            return Response({
+                'error': f'Bulk upload failed: {str(e)}'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class ColleagueViewSet(ModelViewSet):
+    """
+    ViewSet for managing colleagues (الزملاء)
+    """
+    queryset = Colleague.objects.all()
+    serializer_class = ColleagueSerializer
+    permission_classes = [IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+    filterset_fields = ['status', 'is_featured', 'graduation_year']
+    search_fields = ['name', 'position', 'current_workplace', 'description']
+    ordering_fields = ['name', 'created_at', 'graduation_year']
+    ordering = ['name']
+    
+    def get_permissions(self):
+        """
+        Instantiates and returns the list of permissions that this view requires.
+        """
+        if self.action in ['list', 'retrieve', 'by_status']:
+            permission_classes = []
+        else:
+            permission_classes = [IsAdminUser]
+        return [permission() for permission in permission_classes]
+    
+    @action(detail=False, methods=['get'], permission_classes=[])
+    def by_status(self, request):
+        """Get colleagues grouped by status"""
+        status_param = request.query_params.get('status')
+        
+        if status_param:
+            colleagues = self.get_queryset().filter(status=status_param)
+        else:
+            colleagues = self.get_queryset()
+        
+        serializer = ColleagueSerializer(colleagues, many=True, context={'request': request})
+        return Response(serializer.data)
+    
+    @action(detail=False, methods=['get'], permission_classes=[])
+    def promoted(self, request):
+        """Get promoted colleagues"""
+        colleagues = self.get_queryset().filter(status='promoted')
+        serializer = ColleagueSerializer(colleagues, many=True, context={'request': request})
+        return Response(serializer.data)
+    
+    @action(detail=False, methods=['get'], permission_classes=[])
+    def deceased(self, request):
+        """Get deceased colleagues"""
+        colleagues = self.get_queryset().filter(status='deceased')
+        serializer = ColleagueSerializer(colleagues, many=True, context={'request': request})
+        return Response(serializer.data)
