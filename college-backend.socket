@@ -6,6 +6,8 @@ ListenStream=/run/gunicorn/college-backend.sock
 SocketUser=www-data
 SocketGroup=www-data
 SocketMode=0660
+# Remove socket file before binding
+RemoveOnStop=true
 
 [Install]
 WantedBy=sockets.target

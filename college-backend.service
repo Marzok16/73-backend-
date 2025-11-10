@@ -9,17 +9,33 @@ User=www-data
 Group=www-data
 RuntimeDirectory=gunicorn
 WorkingDirectory=/var/www/college-backend
+
+# Pre-start: Ensure directory exists and clean up stale socket
+ExecStartPre=/bin/mkdir -p /run/gunicorn
+ExecStartPre=/bin/chown www-data:www-data /run/gunicorn
+ExecStartPre=/bin/chmod 755 /run/gunicorn
+ExecStartPre=-/bin/rm -f /run/gunicorn/college-backend.sock
+
 ExecStart=/var/www/college-backend/venv/bin/gunicorn \
           --config /var/www/college-backend/gunicorn.conf.py \
           --bind unix:/run/gunicorn/college-backend.sock \
           college_backend.wsgi:application
 ExecReload=/bin/kill -s HUP $MAINPID
+
+# Post-stop: Clean up socket file
+ExecStopPost=-/bin/rm -f /run/gunicorn/college-backend.sock
+
 KillMode=mixed
 TimeoutStopSec=5
+TimeoutStartSec=30
+Restart=on-failure
+RestartSec=5
 PrivateTmp=true
+
 Environment="DJANGO_SETTINGS_MODULE=college_backend.settings"
 Environment="PATH=/var/www/college-backend/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 Environment="LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu"
+Environment="PYTHONUNBUFFERED=1"
 
 [Install]
 WantedBy=multi-user.target
