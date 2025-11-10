@@ -26,7 +26,14 @@ SECRET_KEY = config('SECRET_KEY', default='django-insecure-yv!kz-43lgp^0789dlq84
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = config('DEBUG', default=True, cast=bool)
 
-ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='', cast=lambda v: [s.strip() for s in v.split(',') if s.strip()])
+ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='72.61.147.23,localhost,127.0.0.1', cast=lambda v: [s.strip() for s in v.split(',') if s.strip()])
+
+# CSRF Settings
+CSRF_TRUSTED_ORIGINS = [
+    'http://72.61.147.23',
+    'http://localhost',
+    'http://127.0.0.1',
+]
 
 
 # Application definition
@@ -172,6 +179,8 @@ CORS_ALLOWED_ORIGINS = [
     "http://127.0.0.1:5173",
     "http://localhost:3000",  # Common React dev port
     "http://127.0.0.1:3000",
+    "http://72.61.147.23",    # Production server
+    "http://localhost",       # Local testing
 ]
 
 CORS_ALLOW_CREDENTIALS = True
@@ -179,10 +188,28 @@ CORS_ALLOW_CREDENTIALS = True
 # Allow all origins in development (more permissive for development)
 CORS_ALLOW_ALL_ORIGINS = config('CORS_ALLOW_ALL_ORIGINS', default=True, cast=bool)
 
+# Additional CORS headers for Django admin static files
+CORS_ALLOW_HEADERS = [
+    'accept',
+    'accept-encoding',
+    'authorization',
+    'content-type',
+    'dnt',
+    'origin',
+    'user-agent',
+    'x-csrftoken',
+    'x-requested-with',
+]
+
 # Production CORS settings
 if not DEBUG:
-    CORS_ALLOWED_ORIGINS = config('CORS_ALLOWED_ORIGINS', default='', cast=lambda v: [s.strip() for s in v.split(',') if s.strip()])
+    CORS_ALLOWED_ORIGINS = config('CORS_ALLOWED_ORIGINS', default='http://72.61.147.23', cast=lambda v: [s.strip() for s in v.split(',') if s.strip()])
     CORS_ALLOW_ALL_ORIGINS = False
+
+# Security settings for production
+if not DEBUG:
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    CSRF_TRUSTED_ORIGINS = config('CSRF_TRUSTED_ORIGINS', default='http://72.61.147.23', cast=lambda v: [s.strip() for s in v.split(',') if s.strip()])
 
 # WhiteNoise configuration for static files
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
