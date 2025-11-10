@@ -18,6 +18,8 @@ KillMode=mixed
 TimeoutStopSec=5
 PrivateTmp=true
 Environment="DJANGO_SETTINGS_MODULE=college_backend.settings"
+Environment="PATH=/var/www/college-backend/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+Environment="LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu"
 
 [Install]
 WantedBy=multi-user.target

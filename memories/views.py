@@ -27,6 +27,7 @@ def generate_memory_book_pdf(request):
 	import os
 	import sys
 	import platform
+	import traceback
 	
 	# Add GTK bin directory to PATH for WeasyPrint (Windows only)
 	# On Linux/cloud servers, system libraries should be installed via apt/yum
@@ -38,16 +39,19 @@ def generate_memory_book_pdf(request):
 	try:
 		from weasyprint import HTML, CSS
 	except ImportError as e:
+		error_details = traceback.format_exc()
 		return HttpResponse(
 			(
 				"WeasyPrint is not installed. Error: " + str(e) + "\n\n"
-				"Please install WeasyPrint: pip install weasyprint"
+				"Please install WeasyPrint: pip install weasyprint\n\n"
+				"Full traceback:\n" + error_details
 			),
 			status=500,
 			content_type="text/plain",
 		)
 	except Exception as e:
 		# Check if it's a missing system library issue (common on Linux)
+		error_details = traceback.format_exc()
 		error_msg = str(e).lower()
 		if 'pango' in error_msg or 'cairo' in error_msg or 'lib' in error_msg:
 			return HttpResponse(
@@ -58,7 +62,8 @@ def generate_memory_book_pdf(request):
 					"  sudo apt-get install -y libharfbuzz0b libpango-1.0-0 libpangocairo-1.0-0\n"
 					"  sudo apt-get install -y libgdk-pixbuf2.0-0 libffi-dev shared-mime-info\n\n"
 					"On Render: Add these to build command or use Docker.\n\n"
-					"Error details: " + str(e)
+					"Error details: " + str(e) + "\n\n"
+					"Full traceback:\n" + error_details
 				),
 				status=500,
 				content_type="text/plain",
@@ -66,7 +71,8 @@ def generate_memory_book_pdf(request):
 		else:
 			return HttpResponse(
 				(
-					"WeasyPrint initialization failed. Error: " + str(e)
+					"WeasyPrint initialization failed. Error: " + str(e) + "\n\n"
+					"Full traceback:\n" + error_details
 				),
 				status=500,
 				content_type="text/plain",
