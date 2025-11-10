@@ -35,6 +35,18 @@ CSRF_TRUSTED_ORIGINS = [
     'http://127.0.0.1',
 ]
 
+# CSRF Cookie settings for admin
+CSRF_COOKIE_SECURE = False  # Set to True only if using HTTPS
+CSRF_COOKIE_HTTPONLY = False
+CSRF_COOKIE_SAMESITE = 'Lax'
+CSRF_USE_SESSIONS = False
+CSRF_COOKIE_NAME = 'csrftoken'
+
+# Session settings
+SESSION_COOKIE_SECURE = False  # Set to True only if using HTTPS
+SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SAMESITE = 'Lax'
+
 
 # Application definition
 
