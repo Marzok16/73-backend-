@@ -1,0 +1,11 @@
+[Unit]
+Description=College Backend Gunicorn socket
+
+[Socket]
+ListenStream=/run/gunicorn/college-backend.sock
+SocketUser=www-data
+SocketGroup=www-data
+SocketMode=0660
+
+[Install]
+WantedBy=sockets.target

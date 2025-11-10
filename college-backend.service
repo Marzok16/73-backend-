@@ -1,0 +1,23 @@
+[Unit]
+Description=College Backend Gunicorn daemon
+Requires=college-backend.socket
+After=network.target
+
+[Service]
+Type=notify
+User=www-data
+Group=www-data
+RuntimeDirectory=gunicorn
+WorkingDirectory=/var/www/college-backend
+ExecStart=/var/www/college-backend/venv/bin/gunicorn \
+          --config /var/www/college-backend/gunicorn.conf.py \
+          --bind unix:/run/gunicorn/college-backend.sock \
+          college_backend.wsgi:application
+ExecReload=/bin/kill -s HUP $MAINPID
+KillMode=mixed
+TimeoutStopSec=5
+PrivateTmp=true
+Environment="DJANGO_SETTINGS_MODULE=college_backend.settings"
+
+[Install]
+WantedBy=multi-user.target
