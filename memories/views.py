@@ -111,9 +111,10 @@ def generate_memory_book_pdf(request):
 	
 	try:
 		html_content = render_to_string('pdf/memory_book.html', context)
-		css = CSS(string='@page { size: A4; margin: 18mm; }')
+		# Create HTML document with base_url for resolving image paths
 		html = HTML(string=html_content, base_url=context['base_url'])
-		pdf_bytes = html.write_pdf(stylesheets=[css])
+		# Generate PDF (CSS in template will be used automatically)
+		pdf_bytes = html.write_pdf()
 		response = HttpResponse(pdf_bytes, content_type='application/pdf')
 		response['Content-Disposition'] = 'attachment; filename="memory_book.pdf"'
 		return response
