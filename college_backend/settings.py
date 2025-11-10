@@ -26,24 +26,28 @@ SECRET_KEY = config('SECRET_KEY', default='django-insecure-yv!kz-43lgp^0789dlq84
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = config('DEBUG', default=True, cast=bool)
 
-ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='72.61.147.23,localhost,127.0.0.1', cast=lambda v: [s.strip() for s in v.split(',') if s.strip()])
+ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='kfupm73.com,www.kfupm73.com,72.61.147.23,localhost,127.0.0.1', cast=lambda v: [s.strip() for s in v.split(',') if s.strip()])
 
 # CSRF Settings
 CSRF_TRUSTED_ORIGINS = [
+    'https://kfupm73.com',
+    'https://www.kfupm73.com',
+    'http://kfupm73.com',
+    'http://www.kfupm73.com',
     'http://72.61.147.23',
     'http://localhost',
     'http://127.0.0.1',
 ]
 
 # CSRF Cookie settings for admin
-CSRF_COOKIE_SECURE = False  # Set to True only if using HTTPS
+CSRF_COOKIE_SECURE = not DEBUG  # True in production (HTTPS)
 CSRF_COOKIE_HTTPONLY = False
 CSRF_COOKIE_SAMESITE = 'Lax'
 CSRF_USE_SESSIONS = False
 CSRF_COOKIE_NAME = 'csrftoken'
 
 # Session settings
-SESSION_COOKIE_SECURE = False  # Set to True only if using HTTPS
+SESSION_COOKIE_SECURE = not DEBUG  # True in production (HTTPS)
 SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SAMESITE = 'Lax'
 
@@ -191,7 +195,11 @@ CORS_ALLOWED_ORIGINS = [
     "http://127.0.0.1:5173",
     "http://localhost:3000",  # Common React dev port
     "http://127.0.0.1:3000",
-    "http://72.61.147.23",    # Production server
+    "https://kfupm73.com",    # Production domain (HTTPS)
+    "https://www.kfupm73.com", # Production domain with www (HTTPS)
+    "http://kfupm73.com",     # Production domain (HTTP fallback)
+    "http://www.kfupm73.com",  # Production domain with www (HTTP fallback)
+    "http://72.61.147.23",    # Production server IP
     "http://localhost",       # Local testing
 ]
 
@@ -215,13 +223,17 @@ CORS_ALLOW_HEADERS = [
 
 # Production CORS settings
 if not DEBUG:
-    CORS_ALLOWED_ORIGINS = config('CORS_ALLOWED_ORIGINS', default='http://72.61.147.23', cast=lambda v: [s.strip() for s in v.split(',') if s.strip()])
+    CORS_ALLOWED_ORIGINS = config('CORS_ALLOWED_ORIGINS', default='https://kfupm73.com,https://www.kfupm73.com,http://72.61.147.23', cast=lambda v: [s.strip() for s in v.split(',') if s.strip()])
     CORS_ALLOW_ALL_ORIGINS = False
 
 # Security settings for production
 if not DEBUG:
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
-    CSRF_TRUSTED_ORIGINS = config('CSRF_TRUSTED_ORIGINS', default='http://72.61.147.23', cast=lambda v: [s.strip() for s in v.split(',') if s.strip()])
+    SECURE_SSL_REDIRECT = True  # Redirect HTTP to HTTPS
+    SECURE_HSTS_SECONDS = 31536000  # Enable HSTS for 1 year
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+    CSRF_TRUSTED_ORIGINS = config('CSRF_TRUSTED_ORIGINS', default='https://kfupm73.com,https://www.kfupm73.com', cast=lambda v: [s.strip() for s in v.split(',') if s.strip()])
 
 # WhiteNoise configuration for static files
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
