@@ -1,6 +1,7 @@
 [Unit]
 Description=College Backend Gunicorn daemon
-Requires=college-backend.socket
+# Socket activation disabled - gunicorn creates its own socket
+# Requires=college-backend.socket
 After=network.target
 
 [Service]
