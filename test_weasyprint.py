@@ -33,7 +33,7 @@ def test_weasyprint():
     # Test 3: Check system libraries
     print("\n3. System Libraries:")
     try:
-        from weasyprint.text.ffi import ffi, pango, pango_units
+        from weasyprint.text.ffi import ffi, pango
         print("   ✓ Pango loaded successfully")
     except Exception as e:
         print(f"   ✗ Pango failed to load: {e}")
