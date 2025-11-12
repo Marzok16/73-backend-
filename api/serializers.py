@@ -7,7 +7,7 @@ class MemoryCategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = MemoryCategory
         fields = [
-            'id', 'name', 'description', 'color', 'created_at', 'updated_at',
+            'id', 'name', 'description', 'color', 'year', 'created_at', 'updated_at',
             'photos_count'
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']
@@ -62,7 +62,7 @@ class MeetingCategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = MeetingCategory
         fields = [
-            'id', 'name', 'description', 'color', 'created_at', 'updated_at',
+            'id', 'name', 'description', 'color', 'year', 'created_at', 'updated_at',
             'photos_count'
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']
@@ -105,7 +105,7 @@ class MeetingCategoryDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = MeetingCategory
         fields = [
-            'id', 'name', 'description', 'color', 'created_at', 'updated_at',
+            'id', 'name', 'description', 'color', 'year', 'created_at', 'updated_at',
             'photos'
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']
@@ -120,7 +120,8 @@ class ColleagueSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'name', 'position', 'current_workplace', 'description',
             'photo', 'photo_url', 'status', 'status_display', 'graduation_year',
-            'achievements', 'contact_info', 'is_featured', 'created_at', 'updated_at'
+            'achievements', 'contact_info', 'is_featured', 'death_year',
+            'relative_phone', 'relationship_type', 'created_at', 'updated_at'
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']
     

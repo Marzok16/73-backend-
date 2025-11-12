@@ -3,6 +3,47 @@
 from django.db import migrations
 
 
+def check_table_exists(schema_editor, table_name):
+    """Check if a table exists in the database"""
+    with schema_editor.connection.cursor() as cursor:
+        if schema_editor.connection.vendor == 'postgresql':
+            cursor.execute("""
+                SELECT EXISTS (
+                    SELECT FROM information_schema.tables 
+                    WHERE table_schema = 'public' 
+                    AND table_name = %s
+                );
+            """, [table_name])
+        else:
+            cursor.execute("""
+                SELECT name FROM sqlite_master 
+                WHERE type='table' AND name=%s;
+            """, [table_name])
+        return cursor.fetchone() and cursor.fetchone()[0]
+
+
+def safe_delete_models(apps, schema_editor):
+    """Safely delete models only if they exist"""
+    # Check if tables exist before trying to delete them
+    tables_to_check = ['api_category', 'api_photo', 'api_photoalbum']
+    existing_tables = []
+    
+    for table in tables_to_check:
+        if check_table_exists(schema_editor, table):
+            existing_tables.append(table)
+    
+    # Only delete if tables exist
+    if existing_tables:
+        from django.db import connection
+        with connection.cursor() as cursor:
+            # Drop tables if they exist
+            for table in existing_tables:
+                try:
+                    cursor.execute(f"DROP TABLE IF EXISTS {table} CASCADE;")
+                except Exception:
+                    pass
+
+
 class Migration(migrations.Migration):
 
     dependencies = [
@@ -10,33 +51,8 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.RemoveField(
-            model_name='photo',
-            name='category',
-        ),
-        migrations.RemoveField(
-            model_name='photoalbum',
-            name='category',
-        ),
-        migrations.RemoveField(
-            model_name='photo',
-            name='uploaded_by',
-        ),
-        migrations.RemoveField(
-            model_name='photoalbum',
-            name='cover_photo',
-        ),
-        migrations.RemoveField(
-            model_name='photoalbum',
-            name='photos',
-        ),
-        migrations.DeleteModel(
-            name='Category',
-        ),
-        migrations.DeleteModel(
-            name='Photo',
-        ),
-        migrations.DeleteModel(
-            name='PhotoAlbum',
+        migrations.RunPython(
+            safe_delete_models,
+            migrations.RunPython.noop,  # No reverse operation
         ),
     ]

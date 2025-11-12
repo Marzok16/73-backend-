@@ -21,3 +21,5 @@ class Memory(models.Model):
 
 
 
+
+

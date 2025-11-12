@@ -22,3 +22,5 @@ class MemorySerializer(serializers.ModelSerializer):
 
 
 
+
+

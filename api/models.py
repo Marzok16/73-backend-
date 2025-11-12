@@ -11,13 +11,14 @@ class MemoryCategory(models.Model):
     name = models.CharField(max_length=100, verbose_name="اسم الفئة")
     description = models.TextField(blank=True, null=True, verbose_name="وصف الفئة")
     color = models.CharField(max_length=7, default="#3B82F6", verbose_name="لون الفئة")
+    year = models.IntegerField(blank=True, null=True, verbose_name="السنة")
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="تاريخ الإنشاء")
     updated_at = models.DateTimeField(auto_now=True, verbose_name="تاريخ التحديث")
     
     class Meta:
         verbose_name = "فئة صور تذكارية"
         verbose_name_plural = "فئات الصور التذكارية"
-        ordering = ['name']
+        ordering = ['-year', 'name']  # Sort by year descending (newest first), then by name
     
     def __str__(self):
         return self.name
@@ -49,13 +50,14 @@ class MeetingCategory(models.Model):
     name = models.CharField(max_length=100, verbose_name="اسم فئة اللقاء")
     description = models.TextField(blank=True, null=True, verbose_name="وصف فئة اللقاء")
     color = models.CharField(max_length=7, default="#10B981", verbose_name="لون الفئة")
+    year = models.IntegerField(blank=True, null=True, verbose_name="السنة")
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="تاريخ الإنشاء")
     updated_at = models.DateTimeField(auto_now=True, verbose_name="تاريخ التحديث")
     
     class Meta:
         verbose_name = "فئة اللقاءات"
         verbose_name_plural = "فئات اللقاءات"
-        ordering = ['name']
+        ordering = ['-year', 'name']  # Sort by year descending (newest first), then by name
     
     def __str__(self):
         return self.name
@@ -91,7 +93,7 @@ class Colleague(models.Model):
     ]
     
     name = models.CharField(max_length=200, verbose_name="الاسم")
-    position = models.CharField(max_length=200, blank=True, null=True, verbose_name="المنصب")
+    position = models.CharField(max_length=200, blank=True, null=True, verbose_name="التخصص")
     current_workplace = models.CharField(max_length=300, blank=True, null=True, verbose_name="جهة العمل الحالية")
     description = models.TextField(blank=True, null=True, verbose_name="نبذة تعريفية")
     photo = models.ImageField(upload_to='colleague_photos/', blank=True, null=True, verbose_name="الصورة")
@@ -100,6 +102,19 @@ class Colleague(models.Model):
     achievements = models.TextField(blank=True, null=True, verbose_name="الإنجازات")
     contact_info = models.TextField(blank=True, null=True, verbose_name="معلومات التواصل")
     is_featured = models.BooleanField(default=False, verbose_name="مميز")
+    # Fields for deceased colleagues
+    death_year = models.IntegerField(blank=True, null=True, verbose_name="سنة الوفاة")
+    relative_phone = models.CharField(max_length=20, blank=True, null=True, verbose_name="رقم قريب له")
+    RELATIONSHIP_CHOICES = [
+        ('son', 'ابن'),
+        ('daughter', 'ابنة'),
+        ('brother', 'أخ'),
+        ('sister', 'أخت'),
+        ('father', 'أب'),
+        ('mother', 'أم'),
+        ('other', 'آخر'),
+    ]
+    relationship_type = models.CharField(max_length=20, choices=RELATIONSHIP_CHOICES, blank=True, null=True, verbose_name="وصلة القرابة")
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="تاريخ الإنشاء")
     updated_at = models.DateTimeField(auto_now=True, verbose_name="تاريخ التحديث")
     

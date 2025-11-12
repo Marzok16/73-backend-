@@ -262,8 +262,8 @@ class MeetingCategoryViewSet(ModelViewSet):
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     search_fields = ['name', 'description']
-    ordering_fields = ['name', 'created_at']
-    ordering = ['name']
+    ordering_fields = ['name', 'created_at', 'year']
+    ordering = ['-year', 'name']  # Sort by year descending (newest first), then by name
     
     def get_serializer_class(self):
         if self.action == 'retrieve':

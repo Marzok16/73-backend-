@@ -15,3 +15,5 @@ class MemoryAdmin(admin.ModelAdmin):
 
 
 
+
+
