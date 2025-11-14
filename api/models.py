@@ -26,13 +26,13 @@ class MemoryCategory(models.Model):
 
 class MemoryPhoto(models.Model):
     """Model for memory photos within categories"""
-    category = models.ForeignKey(MemoryCategory, on_delete=models.CASCADE, related_name='photos', verbose_name="الفئة")
+    category = models.ForeignKey(MemoryCategory, on_delete=models.CASCADE, related_name='photos', verbose_name="الفئة", db_index=True)
     title_ar = models.CharField(max_length=200, verbose_name="عنوان الصورة")
     description_ar = models.TextField(blank=True, null=True, verbose_name="وصف الصورة")
     image = models.ImageField(upload_to='memory_photos/', verbose_name="الصورة")
     thumbnail = models.ImageField(upload_to='memory_thumbnails/', blank=True, null=True, verbose_name="صورة مصغرة")
-    is_featured = models.BooleanField(default=False, verbose_name="صورة مميزة")
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name="تاريخ الإنشاء")
+    is_featured = models.BooleanField(default=False, verbose_name="صورة مميزة", db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="تاريخ الإنشاء", db_index=True)
     updated_at = models.DateTimeField(auto_now=True, verbose_name="تاريخ التحديث")
     uploaded_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, verbose_name="رفع بواسطة")
     
@@ -40,6 +40,12 @@ class MemoryPhoto(models.Model):
         verbose_name = "صورة تذكارية"
         verbose_name_plural = "الصور التذكارية"
         ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['-created_at'], name='memory_photo_created_idx'),
+            models.Index(fields=['category', '-created_at'], name='memory_cat_date_idx'),
+            models.Index(fields=['category', 'is_featured'], name='memory_cat_featured_idx'),
+            models.Index(fields=['is_featured', '-created_at'], name='memory_featured_date_idx'),
+        ]
     
     def __str__(self):
         return self.title_ar
@@ -65,13 +71,13 @@ class MeetingCategory(models.Model):
 
 class MeetingPhoto(models.Model):
     """Model for meeting photos within categories"""
-    category = models.ForeignKey(MeetingCategory, on_delete=models.CASCADE, related_name='photos', verbose_name="فئة اللقاء")
+    category = models.ForeignKey(MeetingCategory, on_delete=models.CASCADE, related_name='photos', verbose_name="فئة اللقاء", db_index=True)
     title_ar = models.CharField(max_length=200, verbose_name="عنوان صورة اللقاء")
     description_ar = models.TextField(blank=True, null=True, verbose_name="وصف صورة اللقاء")
     image = models.ImageField(upload_to='meeting_photos/', verbose_name="صورة اللقاء")
     thumbnail = models.ImageField(upload_to='meeting_thumbnails/', blank=True, null=True, verbose_name="صورة مصغرة")
-    is_featured = models.BooleanField(default=False, verbose_name="صورة مميزة")
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name="تاريخ الإنشاء")
+    is_featured = models.BooleanField(default=False, verbose_name="صورة مميزة", db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="تاريخ الإنشاء", db_index=True)
     updated_at = models.DateTimeField(auto_now=True, verbose_name="تاريخ التحديث")
     uploaded_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, verbose_name="رفع بواسطة")
     
@@ -79,6 +85,12 @@ class MeetingPhoto(models.Model):
         verbose_name = "صورة اللقاء"
         verbose_name_plural = "صور اللقاءات"
         ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['-created_at'], name='meeting_photo_created_idx'),
+            models.Index(fields=['category', '-created_at'], name='meeting_cat_date_idx'),
+            models.Index(fields=['category', 'is_featured'], name='meeting_cat_featured_idx'),
+            models.Index(fields=['is_featured', '-created_at'], name='meeting_featured_date_idx'),
+        ]
     
     def __str__(self):
         return self.title_ar
@@ -92,16 +104,16 @@ class Colleague(models.Model):
         ('deceased', 'متوفى'),
     ]
     
-    name = models.CharField(max_length=200, verbose_name="الاسم")
+    name = models.CharField(max_length=200, verbose_name="الاسم", db_index=True)
     position = models.CharField(max_length=200, blank=True, null=True, verbose_name="التخصص")
     current_workplace = models.CharField(max_length=300, blank=True, null=True, verbose_name="جهة العمل الحالية")
     description = models.TextField(blank=True, null=True, verbose_name="نبذة تعريفية")
     photo = models.ImageField(upload_to='colleague_photos/', blank=True, null=True, verbose_name="الصورة")
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='active', verbose_name="الحالة")
-    graduation_year = models.IntegerField(blank=True, null=True, verbose_name="سنة التخرج")
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='active', verbose_name="الحالة", db_index=True)
+    graduation_year = models.IntegerField(blank=True, null=True, verbose_name="سنة التخرج", db_index=True)
     achievements = models.TextField(blank=True, null=True, verbose_name="الإنجازات")
     contact_info = models.TextField(blank=True, null=True, verbose_name="معلومات التواصل")
-    is_featured = models.BooleanField(default=False, verbose_name="مميز")
+    is_featured = models.BooleanField(default=False, verbose_name="مميز", db_index=True)
     # Fields for deceased colleagues
     death_year = models.IntegerField(blank=True, null=True, verbose_name="سنة الوفاة")
     relative_phone = models.CharField(max_length=20, blank=True, null=True, verbose_name="رقم قريب له")
@@ -122,6 +134,11 @@ class Colleague(models.Model):
         verbose_name = "زميل"
         verbose_name_plural = "الزملاء"
         ordering = ['name']
+        indexes = [
+            models.Index(fields=['status', 'name'], name='colleague_status_name_idx'),
+            models.Index(fields=['graduation_year'], name='colleague_grad_year_idx'),
+            models.Index(fields=['is_featured', 'name'], name='colleague_featured_name_idx'),
+        ]
     
     def __str__(self):
         return self.name

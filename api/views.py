@@ -9,6 +9,7 @@ from rest_framework.pagination import PageNumberPagination
 from rest_framework.throttling import AnonRateThrottle, UserRateThrottle
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter, OrderingFilter
+from django.db.models import Count, Prefetch
 from .models import MemoryCategory, MemoryPhoto, MeetingCategory, MeetingPhoto, Colleague
 from .serializers import (
     MemoryCategorySerializer, MemoryPhotoSerializer, MemoryCategoryDetailSerializer,
@@ -128,8 +129,9 @@ def admin_login(request):
 class MemoryCategoryViewSet(ModelViewSet):
     """
     ViewSet for managing memory categories (صور تذكارية)
+    Optimized with Count annotation to prevent N+1 queries
     """
-    queryset = MemoryCategory.objects.prefetch_related('photos').all()
+    queryset = MemoryCategory.objects.all()  # Base queryset for router
     serializer_class = MemoryCategorySerializer
     permission_classes = [IsAuthenticated]
     pagination_class = StandardResultsSetPagination
@@ -137,6 +139,12 @@ class MemoryCategoryViewSet(ModelViewSet):
     search_fields = ['name', 'description']
     ordering_fields = ['name', 'created_at']
     ordering = ['name']
+    
+    def get_queryset(self):
+        """Optimize queryset with annotations to prevent N+1 queries"""
+        return MemoryCategory.objects.annotate(
+            photos_count=Count('photos')
+        ).prefetch_related('photos')
     
     def get_serializer_class(self):
         if self.action == 'retrieve':
@@ -202,8 +210,9 @@ class MemoryCategoryViewSet(ModelViewSet):
 class MemoryPhotoViewSet(ModelViewSet):
     """
     ViewSet for managing memory photos
+    Optimized with select_related to prevent N+1 queries on category
     """
-    queryset = MemoryPhoto.objects.all()
+    queryset = MemoryPhoto.objects.all()  # Base queryset for router
     serializer_class = MemoryPhotoSerializer
     permission_classes = [IsAuthenticated]
     pagination_class = LargeResultsSetPagination
@@ -212,6 +221,10 @@ class MemoryPhotoViewSet(ModelViewSet):
     search_fields = ['title_ar', 'description_ar']
     ordering_fields = ['title_ar', 'created_at']
     ordering = ['-created_at']
+    
+    def get_queryset(self):
+        """Optimize queryset with select_related for category"""
+        return MemoryPhoto.objects.select_related('category', 'uploaded_by')
     
     def get_permissions(self):
         """
@@ -341,8 +354,9 @@ class MemoryPhotoViewSet(ModelViewSet):
 class MeetingCategoryViewSet(ModelViewSet):
     """
     ViewSet for managing meeting categories (اللقاءات)
+    Optimized with Count annotation to prevent N+1 queries
     """
-    queryset = MeetingCategory.objects.prefetch_related('photos').all()
+    queryset = MeetingCategory.objects.all()  # Base queryset for router
     serializer_class = MeetingCategorySerializer
     permission_classes = [IsAuthenticated]
     pagination_class = StandardResultsSetPagination
@@ -350,6 +364,12 @@ class MeetingCategoryViewSet(ModelViewSet):
     search_fields = ['name', 'description']
     ordering_fields = ['name', 'created_at', 'year']
     ordering = ['-year', 'name']  # Sort by year descending (newest first), then by name
+    
+    def get_queryset(self):
+        """Optimize queryset with annotations to prevent N+1 queries"""
+        return MeetingCategory.objects.annotate(
+            photos_count=Count('photos')
+        ).prefetch_related('photos')
     
     def get_serializer_class(self):
         if self.action == 'retrieve':
@@ -415,8 +435,9 @@ class MeetingCategoryViewSet(ModelViewSet):
 class MeetingPhotoViewSet(ModelViewSet):
     """
     ViewSet for managing meeting photos
+    Optimized with select_related to prevent N+1 queries on category
     """
-    queryset = MeetingPhoto.objects.all()
+    queryset = MeetingPhoto.objects.all()  # Base queryset for router
     serializer_class = MeetingPhotoSerializer
     permission_classes = [IsAuthenticated]
     pagination_class = LargeResultsSetPagination
@@ -425,6 +446,10 @@ class MeetingPhotoViewSet(ModelViewSet):
     search_fields = ['title_ar', 'description_ar']
     ordering_fields = ['title_ar', 'created_at']
     ordering = ['-created_at']
+    
+    def get_queryset(self):
+        """Optimize queryset with select_related for category"""
+        return MeetingPhoto.objects.select_related('category', 'uploaded_by')
     
     def get_permissions(self):
         """

@@ -2,7 +2,8 @@ from rest_framework import serializers
 from .models import MemoryCategory, MemoryPhoto, MeetingCategory, MeetingPhoto, Colleague
 
 class MemoryCategorySerializer(serializers.ModelSerializer):
-    photos_count = serializers.SerializerMethodField()
+    # Use IntegerField to receive annotated count from queryset
+    photos_count = serializers.IntegerField(read_only=True)
     
     class Meta:
         model = MemoryCategory
@@ -10,10 +11,7 @@ class MemoryCategorySerializer(serializers.ModelSerializer):
             'id', 'name', 'description', 'color', 'year', 'created_at', 'updated_at',
             'photos_count'
         ]
-        read_only_fields = ['id', 'created_at', 'updated_at']
-    
-    def get_photos_count(self, obj):
-        return obj.photos.count()
+        read_only_fields = ['id', 'created_at', 'updated_at', 'photos_count']
 
 
 class MemoryPhotoSerializer(serializers.ModelSerializer):
@@ -57,7 +55,8 @@ class MemoryCategoryDetailSerializer(serializers.ModelSerializer):
 
 
 class MeetingCategorySerializer(serializers.ModelSerializer):
-    photos_count = serializers.SerializerMethodField()
+    # Use IntegerField to receive annotated count from queryset
+    photos_count = serializers.IntegerField(read_only=True)
     
     class Meta:
         model = MeetingCategory
@@ -65,10 +64,7 @@ class MeetingCategorySerializer(serializers.ModelSerializer):
             'id', 'name', 'description', 'color', 'year', 'created_at', 'updated_at',
             'photos_count'
         ]
-        read_only_fields = ['id', 'created_at', 'updated_at']
-    
-    def get_photos_count(self, obj):
-        return obj.photos.count()
+        read_only_fields = ['id', 'created_at', 'updated_at', 'photos_count']
 
 
 class MeetingPhotoSerializer(serializers.ModelSerializer):

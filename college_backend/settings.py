@@ -221,32 +221,30 @@ REST_FRAMEWORK = {
 }
 
 # CORS Configuration for Frontend Integration
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:5173",  # Vite default port
-    "http://127.0.0.1:5173",
-    "http://localhost:3000",  # Common React dev port
-    "http://127.0.0.1:3000",
-    "https://kfupm73.cloud",    # Production domain (HTTPS)
-    "https://www.kfupm73.cloud", # Production domain with www (HTTPS)
-    "http://kfupm73.cloud",     # Production domain (HTTP fallback)
-    "http://www.kfupm73.cloud",  # Production domain with www (HTTP fallback)
-    "http://72.61.147.23",    # Production server IP
-    "http://localhost",       # Local testing
-]
+# Separate development and production origins for better security
+if DEBUG:
+    # Development origins - allow localhost
+    CORS_ALLOWED_ORIGINS = [
+        "http://localhost:5173",  # Vite default port
+        "http://127.0.0.1:5173",
+        "http://localhost:3000",  # Common React dev port
+        "http://127.0.0.1:3000",
+    ]
+else:
+    # Production origins - HTTPS ONLY for security
+    CORS_ALLOWED_ORIGINS = [
+        "https://kfupm73.cloud",    # Production domain (HTTPS)
+        "https://www.kfupm73.cloud", # Production domain with www (HTTPS)
+    ]
+    # Override with environment variable if set
+    cors_origins_env = config('CORS_ALLOWED_ORIGINS', default=None)
+    if cors_origins_env:
+        CORS_ALLOWED_ORIGINS = [s.strip() for s in cors_origins_env.split(',') if s.strip()]
 
 CORS_ALLOW_CREDENTIALS = True
 
-# SECURITY: Only allow all origins if explicitly enabled AND in debug mode
-# This prevents accidental production exposure
-CORS_ALLOW_ALL_ORIGINS = config('CORS_ALLOW_ALL_ORIGINS', default=False, cast=bool) and DEBUG
-
-if CORS_ALLOW_ALL_ORIGINS:
-    import warnings
-    warnings.warn(
-        "⚠️  CORS_ALLOW_ALL_ORIGINS is enabled. This should only be used in development!",
-        RuntimeWarning,
-        stacklevel=2
-    )
+# SECURITY: Never allow all origins in production
+CORS_ALLOW_ALL_ORIGINS = False
 
 # Additional CORS headers for Django admin static files
 CORS_ALLOW_HEADERS = [
@@ -261,11 +259,6 @@ CORS_ALLOW_HEADERS = [
     'x-requested-with',
 ]
 
-# Production CORS settings
-if not DEBUG:
-    CORS_ALLOWED_ORIGINS = config('CORS_ALLOWED_ORIGINS', default='https://kfupm73.cloud,https://www.kfupm73.cloud,http://72.61.147.23', cast=lambda v: [s.strip() for s in v.split(',') if s.strip()])
-    CORS_ALLOW_ALL_ORIGINS = False
-
 # Security settings for production
 if not DEBUG:
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
@@ -273,7 +266,15 @@ if not DEBUG:
     SECURE_HSTS_SECONDS = 31536000  # Enable HSTS for 1 year
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_HSTS_PRELOAD = True
-    CSRF_TRUSTED_ORIGINS = config('CSRF_TRUSTED_ORIGINS', default='https://kfupm73.cloud,https://www.kfupm73.cloud', cast=lambda v: [s.strip() for s in v.split(',') if s.strip()])
+    CSRF_TRUSTED_ORIGINS = [
+        'https://kfupm73.cloud',
+        'https://www.kfupm73.cloud',
+    ]
+    
+    # Additional security headers
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+    SECURE_BROWSER_XSS_FILTER = True
+    X_FRAME_OPTIONS = 'DENY'
 
 # WhiteNoise configuration for static files
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
