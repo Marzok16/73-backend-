@@ -12,6 +12,7 @@ router.register(r'colleagues', views.ColleagueViewSet)
 urlpatterns = [
     path('hello/', views.hello_world, name='hello_world'),
     path('health/', views.health_check, name='health_check'),
+    path('dashboard/stats/', views.dashboard_stats, name='dashboard_stats'),
     path('auth/admin-login/', views.admin_login, name='admin_login'),
     path('', include(router.urls)),
 ]

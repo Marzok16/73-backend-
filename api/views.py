@@ -74,6 +74,75 @@ def health_check(request):
         'service': 'college_backend'
     }, status=status.HTTP_200_OK)
 
+@api_view(['GET'])
+def dashboard_stats(request):
+    """
+    Dashboard statistics endpoint - shows server stats and content metrics
+    Requires authentication
+    """
+    from django.conf import settings
+    import shutil
+    
+    try:
+        # Get media directory stats
+        media_path = settings.MEDIA_ROOT
+        disk_usage = shutil.disk_usage(media_path)
+        
+        # Count photos and colleagues
+        memory_photos_count = MemoryPhoto.objects.count()
+        meeting_photos_count = MeetingPhoto.objects.count()
+        colleagues_count = Colleague.objects.count()
+        
+        # Count categories
+        memory_categories_count = MemoryCategory.objects.count()
+        meeting_categories_count = MeetingCategory.objects.count()
+        
+        # Calculate percentages
+        disk_used_percent = (disk_usage.used / disk_usage.total) * 100
+        
+        # Calculate media directory size
+        media_size = 0
+        for dirpath, dirnames, filenames in os.walk(media_path):
+            for filename in filenames:
+                filepath = os.path.join(dirpath, filename)
+                if os.path.isfile(filepath):
+                    media_size += os.path.getsize(filepath)
+        
+        stats = {
+            'photos': {
+                'memory_photos': memory_photos_count,
+                'meeting_photos': meeting_photos_count,
+                'total_photos': memory_photos_count + meeting_photos_count,
+            },
+            'categories': {
+                'memory_categories': memory_categories_count,
+                'meeting_categories': meeting_categories_count,
+                'total_categories': memory_categories_count + meeting_categories_count,
+            },
+            'colleagues': {
+                'total': colleagues_count,
+                'active': Colleague.objects.filter(status='active').count(),
+                'promoted': Colleague.objects.filter(status='promoted').count(),
+                'deceased': Colleague.objects.filter(status='deceased').count(),
+            },
+            'storage': {
+                'total_gb': round(disk_usage.total / (1024**3), 2),
+                'used_gb': round(disk_usage.used / (1024**3), 2),
+                'free_gb': round(disk_usage.free / (1024**3), 2),
+                'used_percent': round(disk_used_percent, 1),
+                'media_size_mb': round(media_size / (1024**2), 2),
+            },
+            'timestamp': timezone.now().isoformat(),
+        }
+        
+        return Response(stats, status=status.HTTP_200_OK)
+        
+    except Exception as e:
+        logger.error(f"Error fetching dashboard stats: {str(e)}")
+        return Response({
+            'error': 'Failed to fetch stats'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 @api_view(['POST'])
 @throttle_classes([LoginRateThrottle])
 def admin_login(request):
