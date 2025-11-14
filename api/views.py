@@ -139,10 +139,26 @@ class MemoryCategoryViewSet(ModelViewSet):
     
     @action(detail=False, methods=['get'], permission_classes=[])
     def with_photos(self, request):
-        """Get all active memory categories with their photos"""
+        """Get all active memory categories with their photos (with optional pagination)"""
+        # Check if pagination is requested
+        limit = request.query_params.get('limit')
+        
         categories = self.get_queryset()
+        
+        # If limit is specified, apply it
+        if limit:
+            try:
+                limit_int = int(limit)
+                categories = categories[:limit_int]
+            except (ValueError, TypeError):
+                pass  # Ignore invalid limit values
+        
         serializer = MemoryCategoryDetailSerializer(categories, many=True, context={'request': request})
-        return Response(serializer.data)
+        
+        # Add cache control headers for better performance
+        response = Response(serializer.data)
+        response['Cache-Control'] = 'public, max-age=300'  # Cache for 5 minutes
+        return response
 
 
 class MemoryPhotoViewSet(ModelViewSet):
@@ -319,10 +335,26 @@ class MeetingCategoryViewSet(ModelViewSet):
     
     @action(detail=False, methods=['get'], permission_classes=[])
     def with_photos(self, request):
-        """Get all active meeting categories with their photos"""
+        """Get all active meeting categories with their photos (with optional pagination)"""
+        # Check if pagination is requested
+        limit = request.query_params.get('limit')
+        
         categories = self.get_queryset()
+        
+        # If limit is specified, apply it
+        if limit:
+            try:
+                limit_int = int(limit)
+                categories = categories[:limit_int]
+            except (ValueError, TypeError):
+                pass  # Ignore invalid limit values
+        
         serializer = MeetingCategoryDetailSerializer(categories, many=True, context={'request': request})
-        return Response(serializer.data)
+        
+        # Add cache control headers for better performance
+        response = Response(serializer.data)
+        response['Cache-Control'] = 'public, max-age=300'  # Cache for 5 minutes
+        return response
 
 
 class MeetingPhotoViewSet(ModelViewSet):
