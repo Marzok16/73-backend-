@@ -142,54 +142,91 @@ def delete_file_if_exists(file_path):
 def memory_photo_delete_handler(sender, instance, **kwargs):
     """
     Delete memory photo files when MemoryPhoto instance is deleted
+    Uses transaction.on_commit() to avoid race conditions
     """
-    if instance.image:
-        delete_file_if_exists(instance.image.path)
-    if instance.thumbnail:
-        delete_file_if_exists(instance.thumbnail.path)
+    from django.db import transaction
+    
+    # Store paths before they're potentially invalidated
+    image_path = instance.image.path if instance.image else None
+    thumbnail_path = instance.thumbnail.path if instance.thumbnail else None
+    
+    # Schedule file deletion after transaction commits
+    if image_path:
+        transaction.on_commit(lambda: delete_file_if_exists(image_path))
+    if thumbnail_path:
+        transaction.on_commit(lambda: delete_file_if_exists(thumbnail_path))
 
 @receiver(pre_delete, sender=MemoryCategory)
 def memory_category_delete_handler(sender, instance, **kwargs):
     """
     Delete all memory photos and their files when MemoryCategory is deleted
+    Uses transaction.on_commit() to avoid race conditions
     """
-    # Get all photos in this category before deletion
+    from django.db import transaction
+    
+    # Get all photos in this category before deletion and store their paths
+    file_paths = []
     photos = instance.photos.all()
     for photo in photos:
-        # Delete the files
         if photo.image:
-            delete_file_if_exists(photo.image.path)
+            file_paths.append(photo.image.path)
         if photo.thumbnail:
-            delete_file_if_exists(photo.thumbnail.path)
+            file_paths.append(photo.thumbnail.path)
+    
+    # Schedule file deletion after transaction commits
+    for path in file_paths:
+        transaction.on_commit(lambda p=path: delete_file_if_exists(p))
 
 @receiver(post_delete, sender=MeetingPhoto)
 def meeting_photo_delete_handler(sender, instance, **kwargs):
     """
     Delete meeting photo files when MeetingPhoto instance is deleted
+    Uses transaction.on_commit() to avoid race conditions
     """
-    if instance.image:
-        delete_file_if_exists(instance.image.path)
-    if instance.thumbnail:
-        delete_file_if_exists(instance.thumbnail.path)
+    from django.db import transaction
+    
+    # Store paths before they're potentially invalidated
+    image_path = instance.image.path if instance.image else None
+    thumbnail_path = instance.thumbnail.path if instance.thumbnail else None
+    
+    # Schedule file deletion after transaction commits
+    if image_path:
+        transaction.on_commit(lambda: delete_file_if_exists(image_path))
+    if thumbnail_path:
+        transaction.on_commit(lambda: delete_file_if_exists(thumbnail_path))
 
 @receiver(pre_delete, sender=MeetingCategory)
 def meeting_category_delete_handler(sender, instance, **kwargs):
     """
     Delete all meeting photos and their files when MeetingCategory is deleted
+    Uses transaction.on_commit() to avoid race conditions
     """
-    # Get all photos in this category before deletion
+    from django.db import transaction
+    
+    # Get all photos in this category before deletion and store their paths
+    file_paths = []
     photos = instance.photos.all()
     for photo in photos:
-        # Delete the files
         if photo.image:
-            delete_file_if_exists(photo.image.path)
+            file_paths.append(photo.image.path)
         if photo.thumbnail:
-            delete_file_if_exists(photo.thumbnail.path)
+            file_paths.append(photo.thumbnail.path)
+    
+    # Schedule file deletion after transaction commits
+    for path in file_paths:
+        transaction.on_commit(lambda p=path: delete_file_if_exists(p))
 
 @receiver(post_delete, sender=Colleague)
 def colleague_delete_handler(sender, instance, **kwargs):
     """
     Delete colleague photo file when Colleague instance is deleted
+    Uses transaction.on_commit() to avoid race conditions
     """
-    if instance.photo:
-        delete_file_if_exists(instance.photo.path)
+    from django.db import transaction
+    
+    # Store path before it's potentially invalidated
+    photo_path = instance.photo.path if instance.photo else None
+    
+    # Schedule file deletion after transaction commits
+    if photo_path:
+        transaction.on_commit(lambda: delete_file_if_exists(photo_path))

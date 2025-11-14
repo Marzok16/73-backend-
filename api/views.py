@@ -1,11 +1,12 @@
 from django.shortcuts import render
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view, throttle_classes
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.viewsets import ModelViewSet
 from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from rest_framework.decorators import action
 from rest_framework.pagination import PageNumberPagination
+from rest_framework.throttling import AnonRateThrottle, UserRateThrottle
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter, OrderingFilter
 from .models import MemoryCategory, MemoryPhoto, MeetingCategory, MeetingPhoto, Colleague
@@ -14,10 +15,26 @@ from .serializers import (
     MeetingCategorySerializer, MeetingPhotoSerializer, MeetingCategoryDetailSerializer,
     ColleagueSerializer
 )
+from .validators import validate_uploaded_image
 from django.contrib.auth import authenticate
 from django.contrib.auth.models import User
 from rest_framework.authtoken.models import Token
+from django.db import transaction
 import os
+import logging
+
+logger = logging.getLogger(__name__)
+
+# Custom throttle classes
+class LoginRateThrottle(AnonRateThrottle):
+    """Strict rate limiting for login attempts to prevent brute force attacks"""
+    rate = '5/hour'
+    scope = 'login'
+
+class UploadRateThrottle(UserRateThrottle):
+    """Rate limiting for file uploads"""
+    rate = '20/hour'
+    scope = 'upload'
 
 # Pagination classes
 class StandardResultsSetPagination(PageNumberPagination):
@@ -57,41 +74,62 @@ def health_check(request):
     }, status=status.HTTP_200_OK)
 
 @api_view(['POST'])
+@throttle_classes([LoginRateThrottle])
 def admin_login(request):
     """
     Authenticate against Django users and allow ONLY superusers.
     Expected body: { "username": string, "password": string }
-    Returns 200 with { username } if valid superuser; 401 otherwise.
+    Returns 200 with { username, token } if valid superuser; 401 otherwise.
+    
+    Rate limited to 5 attempts per hour per IP to prevent brute force attacks.
     """
     username = request.data.get('username')
     password = request.data.get('password')
 
+    # Input validation
     if not username or not password:
+        logger.warning(f"Login attempt with missing credentials from {request.META.get('REMOTE_ADDR')}")
         return Response({
             'detail': 'Username and password are required.'
+        }, status=status.HTTP_400_BAD_REQUEST)
+    
+    # Validate input length to prevent DoS
+    if len(username) > 150 or len(password) > 128:
+        logger.warning(f"Login attempt with oversized credentials from {request.META.get('REMOTE_ADDR')}")
+        return Response({
+            'detail': 'Invalid credentials format.'
         }, status=status.HTTP_400_BAD_REQUEST)
 
     user = authenticate(username=username, password=password)
 
     if user is None:
+        logger.warning(f"Failed login attempt for username '{username}' from {request.META.get('REMOTE_ADDR')}")
         return Response({ 'detail': 'Invalid credentials.' }, status=status.HTTP_401_UNAUTHORIZED)
 
     if not user.is_active:
+        logger.warning(f"Login attempt for inactive user '{username}' from {request.META.get('REMOTE_ADDR')}")
         return Response({ 'detail': 'User account is disabled.' }, status=status.HTTP_403_FORBIDDEN)
 
     if not user.is_superuser:
+        logger.warning(f"Non-superuser '{username}' attempted admin login from {request.META.get('REMOTE_ADDR')}")
         return Response({ 'detail': 'Admin access denied. Superuser required.' }, status=status.HTTP_403_FORBIDDEN)
 
     # Issue or retrieve an API token for the authenticated admin user
-    token, _ = Token.objects.get_or_create(user=user)
+    token, created = Token.objects.get_or_create(user=user)
+    
+    logger.info(f"Successful admin login for '{username}' from {request.META.get('REMOTE_ADDR')}")
 
-    return Response({ 'username': user.username, 'is_superuser': True, 'token': token.key }, status=status.HTTP_200_OK)
+    return Response({ 
+        'username': user.username, 
+        'is_superuser': True, 
+        'token': token.key 
+    }, status=status.HTTP_200_OK)
 
 class MemoryCategoryViewSet(ModelViewSet):
     """
     ViewSet for managing memory categories (صور تذكارية)
     """
-    queryset = MemoryCategory.objects.all()
+    queryset = MemoryCategory.objects.prefetch_related('photos').all()
     serializer_class = MemoryCategorySerializer
     permission_classes = [IsAuthenticated]
     pagination_class = StandardResultsSetPagination
@@ -188,10 +226,11 @@ class MemoryPhotoViewSet(ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(uploaded_by=self.request.user)
     
-    @action(detail=False, methods=['post'], permission_classes=[IsAdminUser])
+    @action(detail=False, methods=['post'], permission_classes=[IsAdminUser], throttle_classes=[UploadRateThrottle])
     def bulk_upload(self, request):
         """
         Bulk upload multiple memory photos with optional names and descriptions
+        Rate limited to prevent server overload. Validates file size, type, and dimensions.
         """
         try:
             category_id = request.data.get('category')
@@ -214,6 +253,22 @@ class MemoryPhotoViewSet(ModelViewSet):
                 return Response({
                     'error': 'No images provided'
                 }, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Limit number of files per upload to prevent DoS
+            max_files = 50
+            if len(uploaded_files) > max_files:
+                return Response({
+                    'error': f'Too many files. Maximum {max_files} files per upload.'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Validate all files before processing
+            for idx, file in enumerate(uploaded_files):
+                try:
+                    validate_uploaded_image(file)
+                except Exception as e:
+                    return Response({
+                        'error': f'File {idx + 1} ({file.name}): {str(e)}'
+                    }, status=status.HTTP_400_BAD_REQUEST)
             
             # Get metadata for each image (optional)
             photo_metadata = {}
@@ -287,7 +342,7 @@ class MeetingCategoryViewSet(ModelViewSet):
     """
     ViewSet for managing meeting categories (اللقاءات)
     """
-    queryset = MeetingCategory.objects.all()
+    queryset = MeetingCategory.objects.prefetch_related('photos').all()
     serializer_class = MeetingCategorySerializer
     permission_classes = [IsAuthenticated]
     pagination_class = StandardResultsSetPagination
@@ -384,10 +439,11 @@ class MeetingPhotoViewSet(ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(uploaded_by=self.request.user)
     
-    @action(detail=False, methods=['post'], permission_classes=[IsAdminUser])
+    @action(detail=False, methods=['post'], permission_classes=[IsAdminUser], throttle_classes=[UploadRateThrottle])
     def bulk_upload(self, request):
         """
         Bulk upload multiple meeting photos with optional names and descriptions
+        Rate limited to prevent server overload. Validates file size, type, and dimensions.
         """
         try:
             category_id = request.data.get('category')
@@ -410,6 +466,22 @@ class MeetingPhotoViewSet(ModelViewSet):
                 return Response({
                     'error': 'No images provided'
                 }, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Limit number of files per upload to prevent DoS
+            max_files = 50
+            if len(uploaded_files) > max_files:
+                return Response({
+                    'error': f'Too many files. Maximum {max_files} files per upload.'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Validate all files before processing
+            for idx, file in enumerate(uploaded_files):
+                try:
+                    validate_uploaded_image(file)
+                except Exception as e:
+                    return Response({
+                        'error': f'File {idx + 1} ({file.name}): {str(e)}'
+                    }, status=status.HTTP_400_BAD_REQUEST)
             
             # Get metadata for each image (optional)
             photo_metadata = {}

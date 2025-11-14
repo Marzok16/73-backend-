@@ -21,10 +21,30 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
+# SECRET_KEY must be set in environment variables for production
 SECRET_KEY = config('SECRET_KEY', default='django-insecure-yv!kz-43lgp^0789dlq848+epngu$fq=us+y9s4ef=r&+%w#ax')
 
+# Validate SECRET_KEY in production
+if not DEBUG and SECRET_KEY == 'django-insecure-yv!kz-43lgp^0789dlq848+epngu$fq=us+y9s4ef=r&+%w#ax':
+    import warnings
+    warnings.warn(
+        "⚠️  SECURITY WARNING: Using default SECRET_KEY in production! "
+        "Set SECRET_KEY environment variable immediately.",
+        RuntimeWarning,
+        stacklevel=2
+    )
+
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = config('DEBUG', default=True, cast=bool)
+DEBUG = config('DEBUG', default=False, cast=bool)
+
+# Warn if DEBUG is True (helpful for catching misconfigurations)
+if DEBUG:
+    import warnings
+    warnings.warn(
+        "⚠️  DEBUG mode is enabled. Do not use in production!",
+        RuntimeWarning,
+        stacklevel=2
+    )
 
 ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='kfupm73.cloud,www.kfupm73.cloud,72.61.147.23,localhost,127.0.0.1', cast=lambda v: [s.strip() for s in v.split(',') if s.strip()])
 
@@ -188,6 +208,16 @@ REST_FRAMEWORK = {
         'rest_framework.authentication.TokenAuthentication',
         'rest_framework.authentication.SessionAuthentication',
     ],
+    'DEFAULT_THROTTLE_CLASSES': [
+        'rest_framework.throttling.AnonRateThrottle',
+        'rest_framework.throttling.UserRateThrottle',
+    ],
+    'DEFAULT_THROTTLE_RATES': {
+        'anon': '100/hour',
+        'user': '1000/hour',
+        'login': '5/hour',  # Strict limit for login attempts
+        'upload': '20/hour',  # Limit for file uploads
+    },
 }
 
 # CORS Configuration for Frontend Integration
@@ -206,8 +236,17 @@ CORS_ALLOWED_ORIGINS = [
 
 CORS_ALLOW_CREDENTIALS = True
 
-# Allow all origins in development (more permissive for development)
-CORS_ALLOW_ALL_ORIGINS = config('CORS_ALLOW_ALL_ORIGINS', default=True, cast=bool)
+# SECURITY: Only allow all origins if explicitly enabled AND in debug mode
+# This prevents accidental production exposure
+CORS_ALLOW_ALL_ORIGINS = config('CORS_ALLOW_ALL_ORIGINS', default=False, cast=bool) and DEBUG
+
+if CORS_ALLOW_ALL_ORIGINS:
+    import warnings
+    warnings.warn(
+        "⚠️  CORS_ALLOW_ALL_ORIGINS is enabled. This should only be used in development!",
+        RuntimeWarning,
+        stacklevel=2
+    )
 
 # Additional CORS headers for Django admin static files
 CORS_ALLOW_HEADERS = [

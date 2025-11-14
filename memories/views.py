@@ -79,6 +79,7 @@ def generate_memory_book_pdf(request):
 			)
 	
 	# Get all memory categories with their photos (صور تذكارية)
+	# Using prefetch_related to optimize database queries
 	memory_categories = MemoryCategory.objects.prefetch_related('photos').all().order_by('name')
 	
 	# Get all meeting categories with their photos (اللقاءات)

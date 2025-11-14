@@ -1,0 +1,94 @@
+"""
+Custom validators for API models and views
+"""
+from django.core.exceptions import ValidationError
+from django.core.validators import FileExtensionValidator
+from PIL import Image
+import magic
+
+
+def validate_image_size(image):
+    """
+    Validate image file size
+    Maximum size: 10MB
+    """
+    max_size = 10 * 1024 * 1024  # 10MB
+    if image.size > max_size:
+        raise ValidationError(
+            f'Image size cannot exceed 10MB. Current size: {image.size / (1024*1024):.2f}MB'
+        )
+
+
+def validate_image_dimensions(image):
+    """
+    Validate image dimensions to prevent memory exhaustion
+    Maximum dimensions: 4000x4000 pixels
+    """
+    max_width = 4000
+    max_height = 4000
+    
+    try:
+        img = Image.open(image)
+        width, height = img.size
+        
+        if width > max_width or height > max_height:
+            raise ValidationError(
+                f'Image dimensions too large. Max: {max_width}x{max_height}px, '
+                f'Got: {width}x{height}px'
+            )
+    except IOError as e:
+        raise ValidationError(f'Invalid image file: {str(e)}')
+
+
+def validate_image_content_type(file):
+    """
+    Validate that the file is actually an image by checking its MIME type
+    Uses python-magic for robust detection
+    """
+    allowed_types = [
+        'image/jpeg',
+        'image/jpg',
+        'image/png',
+        'image/gif',
+        'image/webp'
+    ]
+    
+    try:
+        # Read first 2048 bytes for magic detection
+        file.seek(0)
+        file_header = file.read(2048)
+        file.seek(0)
+        
+        # Detect MIME type
+        mime = magic.from_buffer(file_header, mime=True)
+        
+        if mime not in allowed_types:
+            raise ValidationError(
+                f'Invalid image type: {mime}. Allowed types: {", ".join(allowed_types)}'
+            )
+    except Exception as e:
+        # If magic fails, fall back to checking file extension and Django's validation
+        if not hasattr(file, 'name'):
+            raise ValidationError('Invalid file upload')
+        
+        ext = file.name.split('.')[-1].lower()
+        if ext not in ['jpg', 'jpeg', 'png', 'gif', 'webp']:
+            raise ValidationError(f'Invalid file extension: .{ext}')
+
+
+# Composite validator for images
+def validate_uploaded_image(image):
+    """
+    Combined validator for uploaded images
+    Checks: size, dimensions, and content type
+    """
+    validate_image_size(image)
+    validate_image_dimensions(image)
+    validate_image_content_type(image)
+
+
+# Extension validator (used in model fields)
+image_extension_validator = FileExtensionValidator(
+    allowed_extensions=['jpg', 'jpeg', 'png', 'gif', 'webp']
+)
+
