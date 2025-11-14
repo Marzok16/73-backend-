@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.utils.html import format_html
 from django.urls import reverse
 from django.utils.safestring import mark_safe
-from .models import MemoryCategory, MemoryPhoto, MeetingCategory, MeetingPhoto
+from .models import MemoryCategory, MemoryPhoto, MeetingCategory, MeetingPhoto, Colleague
 
 @admin.register(MemoryCategory)
 class MemoryCategoryAdmin(admin.ModelAdmin):
@@ -175,3 +175,91 @@ class MeetingPhotoAdmin(admin.ModelAdmin):
             level='INFO'
         )
         super().delete_queryset(request, queryset)
+
+
+@admin.register(Colleague)
+class ColleagueAdmin(admin.ModelAdmin):
+    """Admin interface for Colleague model"""
+    list_display = ['name', 'status', 'graduation_year', 'current_workplace', 'is_featured', 'created_at']
+    list_filter = ['status', 'is_featured', 'graduation_year', 'created_at']
+    search_fields = ['name', 'position', 'current_workplace', 'description', 'achievements']
+    list_editable = ['is_featured']
+    ordering = ['name']
+    readonly_fields = ['created_at', 'updated_at']
+    
+    fieldsets = [
+        ('المعلومات الأساسية', {
+            'fields': ['name', 'position', 'current_workplace', 'graduation_year']
+        }),
+        ('النبذة التعريفية', {
+            'fields': ['description', 'achievements', 'contact_info']
+        }),
+        ('الصورة', {
+            'fields': ['photo']
+        }),
+        ('الحالة والإعدادات', {
+            'fields': ['status', 'is_featured']
+        }),
+        ('معلومات المتوفين', {
+            'fields': ['death_year', 'relative_phone', 'relationship_type'],
+            'classes': ['collapse'],  # Collapsed by default
+            'description': 'تظهر هذه الحقول فقط للزملاء المتوفين'
+        }),
+        ('معلومات النظام', {
+            'fields': ['created_at', 'updated_at'],
+            'classes': ['collapse']
+        })
+    ]
+    
+    def get_queryset(self, request):
+        """Optimize queryset"""
+        qs = super().get_queryset(request)
+        return qs.select_related()
+    
+    def save_model(self, request, obj, form, change):
+        """Auto-clear deceased fields if status is not deceased"""
+        if obj.status != 'deceased':
+            obj.death_year = None
+            obj.relative_phone = None
+            obj.relationship_type = None
+        super().save_model(request, obj, form, change)
+    
+    def delete_model(self, request, obj):
+        """Override delete to show warning about file deletion"""
+        colleague_name = obj.name
+        has_photo = bool(obj.photo)
+        
+        super().delete_model(request, obj)
+        
+        if has_photo:
+            self.message_user(
+                request, 
+                f'تم حذف الزميل "{colleague_name}" وصورته من المجلد.',
+                level='INFO'
+            )
+        else:
+            self.message_user(
+                request, 
+                f'تم حذف الزميل "{colleague_name}".',
+                level='INFO'
+            )
+    
+    def delete_queryset(self, request, queryset):
+        """Override bulk delete to show warning about file deletion"""
+        colleagues_count = queryset.count()
+        photos_count = queryset.exclude(photo='').count()
+        
+        super().delete_queryset(request, queryset)
+        
+        if photos_count > 0:
+            self.message_user(
+                request, 
+                f'تم حذف {colleagues_count} زميل مع {photos_count} صورة وملفاتها من المجلد.',
+                level='WARNING'
+            )
+        else:
+            self.message_user(
+                request, 
+                f'تم حذف {colleagues_count} زميل.',
+                level='INFO'
+            )
