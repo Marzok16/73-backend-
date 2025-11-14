@@ -5,6 +5,7 @@ from rest_framework import status
 from rest_framework.viewsets import ModelViewSet
 from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from rest_framework.decorators import action
+from rest_framework.pagination import PageNumberPagination
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter, OrderingFilter
 from .models import MemoryCategory, MemoryPhoto, MeetingCategory, MeetingPhoto, Colleague
@@ -17,6 +18,17 @@ from django.contrib.auth import authenticate
 from django.contrib.auth.models import User
 from rest_framework.authtoken.models import Token
 import os
+
+# Pagination classes
+class StandardResultsSetPagination(PageNumberPagination):
+    page_size = 12
+    page_size_query_param = 'page_size'
+    max_page_size = 100
+
+class LargeResultsSetPagination(PageNumberPagination):
+    page_size = 24
+    page_size_query_param = 'page_size'
+    max_page_size = 200
 
 # Create your views here.
 
@@ -82,6 +94,7 @@ class MemoryCategoryViewSet(ModelViewSet):
     queryset = MemoryCategory.objects.all()
     serializer_class = MemoryCategorySerializer
     permission_classes = [IsAuthenticated]
+    pagination_class = StandardResultsSetPagination
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     search_fields = ['name', 'description']
     ordering_fields = ['name', 'created_at']
@@ -139,6 +152,7 @@ class MemoryPhotoViewSet(ModelViewSet):
     queryset = MemoryPhoto.objects.all()
     serializer_class = MemoryPhotoSerializer
     permission_classes = [IsAuthenticated]
+    pagination_class = LargeResultsSetPagination
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_fields = ['category', 'is_featured']
     search_fields = ['title_ar', 'description_ar']
@@ -260,6 +274,7 @@ class MeetingCategoryViewSet(ModelViewSet):
     queryset = MeetingCategory.objects.all()
     serializer_class = MeetingCategorySerializer
     permission_classes = [IsAuthenticated]
+    pagination_class = StandardResultsSetPagination
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     search_fields = ['name', 'description']
     ordering_fields = ['name', 'created_at', 'year']
@@ -317,6 +332,7 @@ class MeetingPhotoViewSet(ModelViewSet):
     queryset = MeetingPhoto.objects.all()
     serializer_class = MeetingPhotoSerializer
     permission_classes = [IsAuthenticated]
+    pagination_class = LargeResultsSetPagination
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_fields = ['category', 'is_featured']
     search_fields = ['title_ar', 'description_ar']
@@ -438,6 +454,7 @@ class ColleagueViewSet(ModelViewSet):
     queryset = Colleague.objects.all()
     serializer_class = ColleagueSerializer
     permission_classes = [IsAuthenticated]
+    pagination_class = StandardResultsSetPagination
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_fields = ['status', 'is_featured', 'graduation_year']
     search_fields = ['name', 'position', 'current_workplace', 'description']
