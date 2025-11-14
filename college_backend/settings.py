@@ -24,7 +24,10 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # SECRET_KEY must be set in environment variables for production
 SECRET_KEY = config('SECRET_KEY', default='django-insecure-yv!kz-43lgp^0789dlq848+epngu$fq=us+y9s4ef=r&+%w#ax')
 
-# Validate SECRET_KEY in production
+# SECURITY WARNING: don't run with debug turned on in production!
+DEBUG = config('DEBUG', default=False, cast=bool)
+
+# Validate SECRET_KEY in production (AFTER DEBUG is defined)
 if not DEBUG and SECRET_KEY == 'django-insecure-yv!kz-43lgp^0789dlq848+epngu$fq=us+y9s4ef=r&+%w#ax':
     import warnings
     warnings.warn(
@@ -33,9 +36,6 @@ if not DEBUG and SECRET_KEY == 'django-insecure-yv!kz-43lgp^0789dlq848+epngu$fq=
         RuntimeWarning,
         stacklevel=2
     )
-
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = config('DEBUG', default=False, cast=bool)
 
 # Warn if DEBUG is True (helpful for catching misconfigurations)
 if DEBUG:
