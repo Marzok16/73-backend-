@@ -10,6 +10,7 @@ from rest_framework.throttling import AnonRateThrottle, UserRateThrottle
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter, OrderingFilter
 from django.db.models import Count, Prefetch
+from django.utils import timezone
 from .models import MemoryCategory, MemoryPhoto, MeetingCategory, MeetingPhoto, Colleague
 from .serializers import (
     MemoryCategorySerializer, MemoryPhotoSerializer, MemoryCategoryDetailSerializer,
