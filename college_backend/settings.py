@@ -229,6 +229,8 @@ if DEBUG:
         "http://127.0.0.1:5173",
         "http://localhost:3000",  # Common React dev port
         "http://127.0.0.1:3000",
+        "http://localhost:8080",  # Alternative dev port
+        "http://127.0.0.1:8080",
     ]
 else:
     # Production origins - HTTPS ONLY for security
