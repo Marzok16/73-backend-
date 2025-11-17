@@ -14,10 +14,6 @@ class Migration(migrations.Migration):
             model_name='colleague',
             name='colleague_grad_year_idx',
         ),
-        migrations.RemoveIndex(
-            model_name='colleague',
-            name='api_colleag_grad_year_idx',
-        ),
         migrations.RemoveField(
             model_name='colleague',
             name='graduation_year',
