@@ -180,8 +180,8 @@ class MeetingPhotoAdmin(admin.ModelAdmin):
 @admin.register(Colleague)
 class ColleagueAdmin(admin.ModelAdmin):
     """Admin interface for Colleague model"""
-    list_display = ['name', 'status', 'graduation_year', 'current_workplace', 'is_featured', 'created_at']
-    list_filter = ['status', 'is_featured', 'graduation_year', 'created_at']
+    list_display = ['name', 'status', 'current_workplace', 'is_featured', 'created_at']
+    list_filter = ['status', 'is_featured', 'created_at']
     search_fields = ['name', 'position', 'current_workplace', 'description', 'achievements']
     list_editable = ['is_featured']
     ordering = ['name']
@@ -189,7 +189,7 @@ class ColleagueAdmin(admin.ModelAdmin):
     
     fieldsets = [
         ('المعلومات الأساسية', {
-            'fields': ['name', 'position', 'current_workplace', 'graduation_year']
+            'fields': ['name', 'position', 'current_workplace']
         }),
         ('النبذة التعريفية', {
             'fields': ['description', 'achievements', 'contact_info']

@@ -110,7 +110,6 @@ class Colleague(models.Model):
     description = models.TextField(blank=True, null=True, verbose_name="نبذة تعريفية")
     photo = models.ImageField(upload_to='colleague_photos/', blank=True, null=True, verbose_name="الصورة")
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='active', verbose_name="الحالة", db_index=True)
-    graduation_year = models.IntegerField(blank=True, null=True, verbose_name="سنة التخرج", db_index=True)
     achievements = models.TextField(blank=True, null=True, verbose_name="الإنجازات")
     contact_info = models.TextField(blank=True, null=True, verbose_name="معلومات التواصل")
     is_featured = models.BooleanField(default=False, verbose_name="مميز", db_index=True)
@@ -136,7 +135,6 @@ class Colleague(models.Model):
         ordering = ['name']
         indexes = [
             models.Index(fields=['status', 'name'], name='colleague_status_name_idx'),
-            models.Index(fields=['graduation_year'], name='colleague_grad_year_idx'),
             models.Index(fields=['is_featured', 'name'], name='colleague_featured_name_idx'),
         ]
     

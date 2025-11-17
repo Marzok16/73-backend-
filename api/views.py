@@ -655,9 +655,9 @@ class ColleagueViewSet(ModelViewSet):
     permission_classes = [IsAuthenticated]
     pagination_class = StandardResultsSetPagination
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
-    filterset_fields = ['status', 'is_featured', 'graduation_year']
+    filterset_fields = ['status', 'is_featured']
     search_fields = ['name', 'position', 'current_workplace', 'description']
-    ordering_fields = ['name', 'created_at', 'graduation_year']
+    ordering_fields = ['name', 'created_at']
     ordering = ['name']
     
     def get_permissions(self):

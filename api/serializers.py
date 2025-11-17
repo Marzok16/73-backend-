@@ -115,7 +115,7 @@ class ColleagueSerializer(serializers.ModelSerializer):
         model = Colleague
         fields = [
             'id', 'name', 'position', 'current_workplace', 'description',
-            'photo', 'photo_url', 'status', 'status_display', 'graduation_year',
+            'photo', 'photo_url', 'status', 'status_display',
             'achievements', 'contact_info', 'is_featured', 'death_year',
             'relative_phone', 'relationship_type', 'created_at', 'updated_at'
         ]
