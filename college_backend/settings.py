@@ -218,6 +218,8 @@ REST_FRAMEWORK = {
         'login': '5/hour',  # Strict limit for login attempts
         'upload': '20/hour',  # Limit for file uploads
     },
+    'UNICODE_JSON': True,  # Ensure proper Unicode (Arabic) handling in JSON responses
+    'COERCE_DECIMAL_TO_STRING': True,
 }
 
 # CORS Configuration for Frontend Integration
