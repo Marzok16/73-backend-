@@ -8,9 +8,7 @@ import django.db.models.deletion
 class Migration(migrations.Migration):
 
     dependencies = [
-        # Depend on the merge migration created on server (0020_merge_20251123_2000)
-        # This will be resolved automatically by Django
-        ('api', '0020_merge_20251123_2000'),
+        ('api', '0019_remove_photo_category_remove_photoalbum_category_and_more'),
     ]
 
     operations = [
