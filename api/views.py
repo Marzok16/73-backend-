@@ -374,26 +374,16 @@ class MemoryPhotoViewSet(ModelViewSet):
                     # Get metadata for this specific image
                     metadata = photo_metadata.get(str(i), {})
                     
-                    # Prepare photo data using FormData approach
-                    photo_form_data = {
-                        'category': category_id,
-                        'title_ar': metadata.get('title', f'صورة تذكارية {i + 1}'),  # Default title if not provided
-                        'description_ar': metadata.get('description', ''),  # Empty description if not provided
-                        'is_featured': metadata.get('is_featured', 'false').lower() == 'true',
-                    }
-                    
-                    # Create the photo with file
-                    serializer = MemoryPhotoSerializer(data=photo_form_data, context={'request': request})
-                    if serializer.is_valid():
-                        # Save with the image file
-                        photo = serializer.save(uploaded_by=request.user, image=image_file)
-                        created_photos.append(MemoryPhotoSerializer(photo, context={'request': request}).data)
-                    else:
-                        errors.append({
-                            'image_index': i,
-                            'image_name': image_file.name,
-                            'errors': serializer.errors
-                        })
+                    # Create memory photo instance directly
+                    photo = MemoryPhoto.objects.create(
+                        category=category,
+                        title_ar=metadata.get('title', f'صورة تذكارية {i + 1}'),
+                        description_ar=metadata.get('description', ''),
+                        is_featured=metadata.get('is_featured', 'false').lower() == 'true',
+                        image=image_file,
+                        uploaded_by=request.user
+                    )
+                    created_photos.append(MemoryPhotoSerializer(photo, context={'request': request}).data)
                         
                 except Exception as e:
                     errors.append({
@@ -599,26 +589,16 @@ class MeetingPhotoViewSet(ModelViewSet):
                     # Get metadata for this specific image
                     metadata = photo_metadata.get(str(i), {})
                     
-                    # Prepare photo data using FormData approach
-                    photo_form_data = {
-                        'category': category_id,
-                        'title_ar': metadata.get('title', f'صورة لقاء {i + 1}'),  # Default title if not provided
-                        'description_ar': metadata.get('description', ''),  # Empty description if not provided
-                        'is_featured': metadata.get('is_featured', 'false').lower() == 'true',
-                    }
-                    
-                    # Create the photo with file
-                    serializer = MeetingPhotoSerializer(data=photo_form_data, context={'request': request})
-                    if serializer.is_valid():
-                        # Save with the image file
-                        photo = serializer.save(uploaded_by=request.user, image=image_file)
-                        created_photos.append(MeetingPhotoSerializer(photo, context={'request': request}).data)
-                    else:
-                        errors.append({
-                            'image_index': i,
-                            'image_name': image_file.name,
-                            'errors': serializer.errors
-                        })
+                    # Create meeting photo instance directly
+                    photo = MeetingPhoto.objects.create(
+                        category=category,
+                        title_ar=metadata.get('title', f'صورة لقاء {i + 1}'),
+                        description_ar=metadata.get('description', ''),
+                        is_featured=metadata.get('is_featured', 'false').lower() == 'true',
+                        image=image_file,
+                        uploaded_by=request.user
+                    )
+                    created_photos.append(MeetingPhotoSerializer(photo, context={'request': request}).data)
                         
                 except Exception as e:
                     errors.append({
