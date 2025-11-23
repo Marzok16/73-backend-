@@ -8,7 +8,8 @@ import django.db.models.deletion
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('api', '0017_remove_graduation_year_from_colleague'),
+        # Depend on 0019 - Django will resolve the actual parent migration
+        ('api', '0019_remove_photo_category_remove_photoalbum_category_and_more'),
     ]
 
     operations = [

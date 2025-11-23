@@ -7,7 +7,9 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('api', '0018_add_colleague_image_system'),
+        # This migration can depend on either 0018_merge (server) or 0017 (local)
+        # Django will resolve this based on what's applied in the database
+        ('api', '0017_remove_graduation_year_from_colleague'),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
