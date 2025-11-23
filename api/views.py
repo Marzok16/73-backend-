@@ -678,6 +678,80 @@ class ColleagueViewSet(ModelViewSet):
             permission_classes = [IsAdminUser]
         return [permission() for permission in permission_classes]
     
+    def create(self, request, *args, **kwargs):
+        """
+        Override create to handle photo uploads during colleague creation
+        """
+        try:
+            # Extract main colleague data
+            colleague_data = {
+                'name': request.data.get('name'),
+                'position': request.data.get('position', ''),
+                'current_workplace': request.data.get('current_workplace', ''),
+                'description': request.data.get('description', ''),
+                'status': request.data.get('status', 'active'),
+                'achievements': request.data.get('achievements', ''),
+                'contact_info': request.data.get('contact_info', ''),
+                'is_featured': request.data.get('is_featured', 'false').lower() == 'true',
+            }
+            
+            # Add deceased-specific fields
+            if request.data.get('death_year'):
+                colleague_data['death_year'] = request.data.get('death_year')
+            if request.data.get('relative_phone'):
+                colleague_data['relative_phone'] = request.data.get('relative_phone')
+            if request.data.get('relationship_type'):
+                colleague_data['relationship_type'] = request.data.get('relationship_type')
+            
+            # Handle file uploads
+            if 'photo' in request.FILES:
+                colleague_data['photo'] = request.FILES['photo']
+            if 'photo_1973' in request.FILES:
+                colleague_data['photo_1973'] = request.FILES['photo_1973']
+            if 'latest_photo' in request.FILES:
+                colleague_data['latest_photo'] = request.FILES['latest_photo']
+            
+            # Create colleague
+            serializer = self.get_serializer(data=colleague_data)
+            serializer.is_valid(raise_exception=True)
+            colleague = serializer.save()
+            
+            # Handle archive photos
+            archive_files = request.FILES.getlist('archive_photos')
+            if archive_files:
+                for archive_file in archive_files:
+                    try:
+                        validate_uploaded_image(archive_file)
+                        ColleagueArchiveImage.objects.create(
+                            colleague=colleague,
+                            image=archive_file,
+                            uploaded_by=request.user if request.user.is_authenticated else None
+                        )
+                    except Exception as e:
+                        logger.warning(f"Failed to upload archive photo: {str(e)}")
+            
+            # Return full colleague data with archive photos
+            response_serializer = ColleagueSerializer(colleague, context={'request': request})
+            return Response(response_serializer.data, status=status.HTTP_201_CREATED)
+            
+        except Exception as e:
+            logger.error(f"Error creating colleague: {str(e)}")
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+    
+    def destroy(self, request, *args, **kwargs):
+        """
+        Override destroy to ensure all related photos are deleted
+        """
+        colleague = self.get_object()
+        colleague_name = colleague.name
+        archive_count = colleague.archive_photos.count() if hasattr(colleague, 'archive_photos') else 0
+        
+        # Perform deletion (signals will handle file cleanup)
+        response = super().destroy(request, *args, **kwargs)
+        
+        logger.info(f"Colleague '{colleague_name}' deleted with {archive_count} archive photos")
+        return response
+    
     @action(detail=False, methods=['get'], permission_classes=[])
     def by_status(self, request):
         """Get colleagues grouped by status"""
