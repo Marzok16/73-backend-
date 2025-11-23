@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.utils.html import format_html
 from django.urls import reverse
 from django.utils.safestring import mark_safe
-from .models import MemoryCategory, MemoryPhoto, MeetingCategory, MeetingPhoto, Colleague
+from .models import MemoryCategory, MemoryPhoto, MeetingCategory, MeetingPhoto, Colleague, ColleagueArchiveImage
 
 @admin.register(MemoryCategory)
 class MemoryCategoryAdmin(admin.ModelAdmin):
@@ -197,6 +197,11 @@ class ColleagueAdmin(admin.ModelAdmin):
         ('الصورة', {
             'fields': ['photo']
         }),
+        ('نظام الصور المنظم', {
+            'fields': ['photo_1973', 'latest_photo'],
+            'classes': ['collapse'],
+            'description': 'صورة 1973 والصورة السنوية الأخيرة'
+        }),
         ('الحالة والإعدادات', {
             'fields': ['status', 'is_featured']
         }),
@@ -263,3 +268,43 @@ class ColleagueAdmin(admin.ModelAdmin):
                 f'تم حذف {colleagues_count} زميل.',
                 level='INFO'
             )
+
+
+@admin.register(ColleagueArchiveImage)
+class ColleagueArchiveImageAdmin(admin.ModelAdmin):
+    """Admin interface for ColleagueArchiveImage model"""
+    list_display = ['colleague', 'uploaded_at', 'uploaded_by']
+    list_filter = ['uploaded_at', 'colleague']
+    search_fields = ['colleague__name']
+    ordering = ['-uploaded_at']
+    readonly_fields = ['uploaded_at', 'uploaded_by']
+    
+    fieldsets = [
+        ('المعلومات الأساسية', {
+            'fields': ['colleague', 'image']
+        }),
+        ('معلومات النظام', {
+            'fields': ['uploaded_at', 'uploaded_by'],
+            'classes': ['collapse']
+        })
+    ]
+    
+    def delete_model(self, request, obj):
+        """Override delete to show warning about file deletion"""
+        colleague_name = obj.colleague.name
+        super().delete_model(request, obj)
+        self.message_user(
+            request, 
+            f'تم حذف صورة الأرشيف للزميل "{colleague_name}" وملفها من المجلد.',
+            level='INFO'
+        )
+    
+    def delete_queryset(self, request, queryset):
+        """Override bulk delete to show warning about file deletion"""
+        images_count = queryset.count()
+        super().delete_queryset(request, queryset)
+        self.message_user(
+            request, 
+            f'تم حذف {images_count} صورة أرشيف وملفاتها من المجلد.',
+            level='INFO'
+        )

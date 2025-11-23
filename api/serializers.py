@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import MemoryCategory, MemoryPhoto, MeetingCategory, MeetingPhoto, Colleague
+from .models import MemoryCategory, MemoryPhoto, MeetingCategory, MeetingPhoto, Colleague, ColleagueArchiveImage
 
 class MemoryCategorySerializer(serializers.ModelSerializer):
     # Use IntegerField to receive annotated count from queryset
@@ -107,23 +107,59 @@ class MeetingCategoryDetailSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'created_at', 'updated_at']
 
 
+class ColleagueArchiveImageSerializer(serializers.ModelSerializer):
+    """Serializer for archive images"""
+    image_url = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = ColleagueArchiveImage
+        fields = ['id', 'image', 'image_url', 'uploaded_at', 'uploaded_by']
+        read_only_fields = ['id', 'uploaded_at', 'uploaded_by']
+    
+    def get_image_url(self, obj):
+        if obj.image:
+            request = self.context.get('request')
+            if request:
+                return request.build_absolute_uri(obj.image.url)
+        return None
+
+
 class ColleagueSerializer(serializers.ModelSerializer):
     photo_url = serializers.SerializerMethodField()
+    photo_1973_url = serializers.SerializerMethodField()
+    latest_photo_url = serializers.SerializerMethodField()
     status_display = serializers.CharField(source='get_status_display', read_only=True)
+    archive_photos = ColleagueArchiveImageSerializer(many=True, read_only=True)
     
     class Meta:
         model = Colleague
         fields = [
             'id', 'name', 'position', 'current_workplace', 'description',
-            'photo', 'photo_url', 'status', 'status_display',
+            'photo', 'photo_url', 'photo_1973', 'photo_1973_url',
+            'latest_photo', 'latest_photo_url', 'status', 'status_display',
             'achievements', 'contact_info', 'is_featured', 'death_year',
-            'relative_phone', 'relationship_type', 'created_at', 'updated_at'
+            'relative_phone', 'relationship_type', 'archive_photos',
+            'created_at', 'updated_at'
         ]
-        read_only_fields = ['id', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'created_at', 'updated_at', 'archive_photos']
     
     def get_photo_url(self, obj):
         if obj.photo:
             request = self.context.get('request')
             if request:
                 return request.build_absolute_uri(obj.photo.url)
+        return None
+    
+    def get_photo_1973_url(self, obj):
+        if obj.photo_1973:
+            request = self.context.get('request')
+            if request:
+                return request.build_absolute_uri(obj.photo_1973.url)
+        return None
+    
+    def get_latest_photo_url(self, obj):
+        if obj.latest_photo:
+            request = self.context.get('request')
+            if request:
+                return request.build_absolute_uri(obj.latest_photo.url)
         return None

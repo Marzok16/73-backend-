@@ -11,11 +11,11 @@ from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter, OrderingFilter
 from django.db.models import Count, Prefetch
 from django.utils import timezone
-from .models import MemoryCategory, MemoryPhoto, MeetingCategory, MeetingPhoto, Colleague
+from .models import MemoryCategory, MemoryPhoto, MeetingCategory, MeetingPhoto, Colleague, ColleagueArchiveImage
 from .serializers import (
     MemoryCategorySerializer, MemoryPhotoSerializer, MemoryCategoryDetailSerializer,
     MeetingCategorySerializer, MeetingPhotoSerializer, MeetingCategoryDetailSerializer,
-    ColleagueSerializer
+    ColleagueSerializer, ColleagueArchiveImageSerializer
 )
 from .validators import validate_uploaded_image
 from django.contrib.auth import authenticate
@@ -295,6 +295,10 @@ class MemoryPhotoViewSet(ModelViewSet):
     def get_queryset(self):
         """Optimize queryset with select_related for category"""
         return MemoryPhoto.objects.select_related('category', 'uploaded_by')
+
+    def get_queryset(self):
+        """Optimize queryset with prefetch_related for archive photos"""
+        return Colleague.objects.prefetch_related('archive_photos')
     
     def get_permissions(self):
         """
@@ -660,11 +664,15 @@ class ColleagueViewSet(ModelViewSet):
     ordering_fields = ['name', 'created_at']
     ordering = ['name']
     
+    def get_queryset(self):
+        """Optimize queryset with prefetch_related for archive photos"""
+        return Colleague.objects.prefetch_related('archive_photos')
+    
     def get_permissions(self):
         """
         Instantiates and returns the list of permissions that this view requires.
         """
-        if self.action in ['list', 'retrieve', 'by_status']:
+        if self.action in ['list', 'retrieve', 'by_status', 'promoted', 'deceased']:
             permission_classes = []
         else:
             permission_classes = [IsAdminUser]
@@ -696,3 +704,178 @@ class ColleagueViewSet(ModelViewSet):
         colleagues = self.get_queryset().filter(status='deceased')
         serializer = ColleagueSerializer(colleagues, many=True, context={'request': request})
         return Response(serializer.data)
+    
+    @action(detail=True, methods=['post'], permission_classes=[IsAdminUser], throttle_classes=[UploadRateThrottle])
+    def upload_photo_1973(self, request, pk=None):
+        """
+        Upload or replace the 1973 photo for a colleague (admin-only)
+        Expected: multipart/form-data with 'image' field
+        """
+        colleague = self.get_object()
+        
+        if 'image' not in request.FILES:
+            return Response({
+                'error': 'Image file is required'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        image_file = request.FILES['image']
+        
+        # Validate image
+        try:
+            validate_uploaded_image(image_file)
+        except Exception as e:
+            return Response({
+                'error': str(e)
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Delete old photo if exists
+        if colleague.photo_1973:
+            try:
+                old_path = colleague.photo_1973.path
+                if os.path.isfile(old_path):
+                    os.remove(old_path)
+            except Exception:
+                pass  # Ignore errors when deleting old file
+        
+        # Save new photo
+        colleague.photo_1973 = image_file
+        colleague.save()
+        
+        serializer = ColleagueSerializer(colleague, context={'request': request})
+        return Response({
+            'success': True,
+            'message': 'Photo 1973 uploaded successfully',
+            'colleague': serializer.data
+        }, status=status.HTTP_200_OK)
+    
+    @action(detail=True, methods=['post'], permission_classes=[IsAdminUser], throttle_classes=[UploadRateThrottle])
+    def upload_latest_photo(self, request, pk=None):
+        """
+        Upload or replace the latest annual photo for a colleague (admin-only)
+        Expected: multipart/form-data with 'image' field
+        """
+        colleague = self.get_object()
+        
+        if 'image' not in request.FILES:
+            return Response({
+                'error': 'Image file is required'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        image_file = request.FILES['image']
+        
+        # Validate image
+        try:
+            validate_uploaded_image(image_file)
+        except Exception as e:
+            return Response({
+                'error': str(e)
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Delete old photo if exists
+        if colleague.latest_photo:
+            try:
+                old_path = colleague.latest_photo.path
+                if os.path.isfile(old_path):
+                    os.remove(old_path)
+            except Exception:
+                pass  # Ignore errors when deleting old file
+        
+        # Save new photo
+        colleague.latest_photo = image_file
+        colleague.save()
+        
+        serializer = ColleagueSerializer(colleague, context={'request': request})
+        return Response({
+            'success': True,
+            'message': 'Latest photo uploaded successfully',
+            'colleague': serializer.data
+        }, status=status.HTTP_200_OK)
+    
+    @action(detail=True, methods=['post'], permission_classes=[IsAdminUser], throttle_classes=[UploadRateThrottle])
+    def add_archive_photo(self, request, pk=None):
+        """
+        Add a new archive photo for a colleague (admin-only)
+        Expected: multipart/form-data with 'image' field
+        Supports multiple images via 'images' field (list)
+        """
+        colleague = self.get_object()
+        
+        # Support both single image and multiple images
+        images = request.FILES.getlist('images') or ([request.FILES.get('image')] if request.FILES.get('image') else [])
+        
+        if not images:
+            return Response({
+                'error': 'At least one image file is required'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Limit number of files per upload
+        max_files = 20
+        if len(images) > max_files:
+            return Response({
+                'error': f'Too many files. Maximum {max_files} files per upload.'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Validate all images
+        for idx, image_file in enumerate(images):
+            try:
+                validate_uploaded_image(image_file)
+            except Exception as e:
+                return Response({
+                    'error': f'File {idx + 1} ({image_file.name}): {str(e)}'
+                }, status=status.HTTP_400_BAD_REQUEST)
+        
+        created_images = []
+        errors = []
+        
+        for idx, image_file in enumerate(images):
+            try:
+                # Check for duplicate (by filename and colleague)
+                # Note: The unique constraint in model will prevent true duplicates
+                archive_image = ColleagueArchiveImage.objects.create(
+                    colleague=colleague,
+                    image=image_file,
+                    uploaded_by=request.user if request.user.is_authenticated else None
+                )
+                serializer = ColleagueArchiveImageSerializer(archive_image, context={'request': request})
+                created_images.append(serializer.data)
+            except Exception as e:
+                errors.append({
+                    'image_index': idx,
+                    'image_name': image_file.name if hasattr(image_file, 'name') else f'Image {idx}',
+                    'error': str(e)
+                })
+        
+        response_data = {
+            'success': True,
+            'created_count': len(created_images),
+            'total_count': len(images),
+            'created_images': created_images
+        }
+        
+        if errors:
+            response_data['errors'] = errors
+            response_data['error_count'] = len(errors)
+        
+        return Response(response_data, status=status.HTTP_201_CREATED)
+    
+    @action(detail=True, methods=['delete'], permission_classes=[IsAdminUser], url_path='archive-photo/(?P<archive_id>[^/.]+)')
+    def delete_archive_photo(self, request, pk=None, archive_id=None):
+        """
+        Delete a specific archive photo for a colleague (admin-only)
+        """
+        colleague = self.get_object()
+        
+        try:
+            archive_image = ColleagueArchiveImage.objects.get(id=archive_id, colleague=colleague)
+        except ColleagueArchiveImage.DoesNotExist:
+            return Response({
+                'error': 'Archive photo not found'
+            }, status=status.HTTP_404_NOT_FOUND)
+        
+        # Delete the image (signal handler will clean up the file)
+        archive_image.delete()
+        
+        return Response({
+            'success': True,
+            'message': 'Archive photo deleted successfully'
+        }, status=status.HTTP_200_OK)

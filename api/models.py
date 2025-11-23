@@ -126,6 +126,9 @@ class Colleague(models.Model):
         ('other', 'آخر'),
     ]
     relationship_type = models.CharField(max_length=20, choices=RELATIONSHIP_CHOICES, blank=True, null=True, verbose_name="وصلة القرابة")
+    # Structured image system fields
+    photo_1973 = models.ImageField(upload_to='colleague_photos/1973/', blank=True, null=True, verbose_name="صورة 1973")
+    latest_photo = models.ImageField(upload_to='colleague_photos/latest/', blank=True, null=True, verbose_name="الصورة السنوية الأخيرة")
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="تاريخ الإنشاء")
     updated_at = models.DateTimeField(auto_now=True, verbose_name="تاريخ التحديث")
     
@@ -140,6 +143,26 @@ class Colleague(models.Model):
     
     def __str__(self):
         return self.name
+
+
+class ColleagueArchiveImage(models.Model):
+    """Model for colleague archive photos - supports multiple images per colleague"""
+    colleague = models.ForeignKey(Colleague, on_delete=models.CASCADE, related_name='archive_photos', verbose_name="الزميل", db_index=True)
+    image = models.ImageField(upload_to='colleague_photos/archive/', verbose_name="صورة الأرشيف")
+    uploaded_at = models.DateTimeField(auto_now_add=True, verbose_name="تاريخ الرفع", db_index=True)
+    uploaded_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, verbose_name="رفع بواسطة")
+    
+    class Meta:
+        verbose_name = "صورة أرشيف زميل"
+        verbose_name_plural = "صور أرشيف الزملاء"
+        ordering = ['-uploaded_at']
+        indexes = [
+            models.Index(fields=['colleague', '-uploaded_at'], name='colleague_archive_idx'),
+        ]
+        # Note: Duplicate prevention is handled at the application level in the view
+    
+    def __str__(self):
+        return f"Archive photo for {self.colleague.name}"
 
 
 # Signal handlers for file deletion
@@ -234,14 +257,35 @@ def meeting_category_delete_handler(sender, instance, **kwargs):
 @receiver(post_delete, sender=Colleague)
 def colleague_delete_handler(sender, instance, **kwargs):
     """
-    Delete colleague photo file when Colleague instance is deleted
+    Delete colleague photo files when Colleague instance is deleted
+    Uses transaction.on_commit() to avoid race conditions
+    """
+    from django.db import transaction
+    
+    # Store paths before they're potentially invalidated
+    photo_path = instance.photo.path if instance.photo else None
+    photo_1973_path = instance.photo_1973.path if instance.photo_1973 else None
+    latest_photo_path = instance.latest_photo.path if instance.latest_photo else None
+    
+    # Schedule file deletion after transaction commits
+    if photo_path:
+        transaction.on_commit(lambda: delete_file_if_exists(photo_path))
+    if photo_1973_path:
+        transaction.on_commit(lambda: delete_file_if_exists(photo_1973_path))
+    if latest_photo_path:
+        transaction.on_commit(lambda: delete_file_if_exists(latest_photo_path))
+
+@receiver(post_delete, sender=ColleagueArchiveImage)
+def colleague_archive_image_delete_handler(sender, instance, **kwargs):
+    """
+    Delete archive image file when ColleagueArchiveImage instance is deleted
     Uses transaction.on_commit() to avoid race conditions
     """
     from django.db import transaction
     
     # Store path before it's potentially invalidated
-    photo_path = instance.photo.path if instance.photo else None
+    image_path = instance.image.path if instance.image else None
     
     # Schedule file deletion after transaction commits
-    if photo_path:
-        transaction.on_commit(lambda: delete_file_if_exists(photo_path))
+    if image_path:
+        transaction.on_commit(lambda: delete_file_if_exists(image_path))
