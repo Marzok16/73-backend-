@@ -306,6 +306,19 @@ class MemoryPhotoViewSet(ModelViewSet):
             permission_classes = [IsAdminUser]
         return [permission() for permission in permission_classes]
     
+    def create(self, request, *args, **kwargs):
+        """Override create to add detailed error logging"""
+        logger.info(f"Memory photo create request - Data: {request.data.keys()}, Files: {request.FILES.keys()}")
+        try:
+            serializer = self.get_serializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            self.perform_create(serializer)
+            headers = self.get_success_headers(serializer.data)
+            return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+        except Exception as e:
+            logger.error(f"Memory photo create error: {str(e)}, Data: {request.data}, Files: {request.FILES}")
+            raise
+    
     def perform_create(self, serializer):
         serializer.save(uploaded_by=self.request.user)
     
@@ -521,10 +534,21 @@ class MeetingPhotoViewSet(ModelViewSet):
             permission_classes = [IsAdminUser]
         return [permission() for permission in permission_classes]
     
+    def create(self, request, *args, **kwargs):
+        """Override create to add detailed error logging"""
+        logger.info(f"Meeting photo create request - Data: {request.data.keys()}, Files: {request.FILES.keys()}")
+        try:
+            serializer = self.get_serializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            self.perform_create(serializer)
+            headers = self.get_success_headers(serializer.data)
+            return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+        except Exception as e:
+            logger.error(f"Meeting photo create error: {str(e)}, Data: {request.data}, Files: {request.FILES}")
+            raise
+    
     def perform_create(self, serializer):
-        """Create memory photo with proper error handling"""
-        if not serializer.is_valid():
-            logger.error(f"Memory photo validation errors: {serializer.errors}")
+        """Create meeting photo"""
         serializer.save(uploaded_by=self.request.user)
     
     @action(detail=False, methods=['post'], permission_classes=[IsAdminUser], throttle_classes=[UploadRateThrottle])
