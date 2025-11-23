@@ -189,6 +189,11 @@ STATICFILES_DIRS = []
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
+# File upload settings - Allow bulk uploads
+DATA_UPLOAD_MAX_NUMBER_FILES = 100  # Allow up to 100 files in a single request
+DATA_UPLOAD_MAX_MEMORY_SIZE = 10485760  # 10 MB - files larger than this go to disk
+FILE_UPLOAD_MAX_MEMORY_SIZE = 10485760  # 10 MB - max size before writing to temp file
+
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
