@@ -522,6 +522,9 @@ class MeetingPhotoViewSet(ModelViewSet):
         return [permission() for permission in permission_classes]
     
     def perform_create(self, serializer):
+        """Create memory photo with proper error handling"""
+        if not serializer.is_valid():
+            logger.error(f"Memory photo validation errors: {serializer.errors}")
         serializer.save(uploaded_by=self.request.user)
     
     @action(detail=False, methods=['post'], permission_classes=[IsAdminUser], throttle_classes=[UploadRateThrottle])
