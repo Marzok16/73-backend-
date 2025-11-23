@@ -295,10 +295,6 @@ class MemoryPhotoViewSet(ModelViewSet):
     def get_queryset(self):
         """Optimize queryset with select_related for category"""
         return MemoryPhoto.objects.select_related('category', 'uploaded_by')
-
-    def get_queryset(self):
-        """Optimize queryset with prefetch_related for archive photos"""
-        return Colleague.objects.prefetch_related('archive_photos')
     
     def get_permissions(self):
         """
