@@ -928,6 +928,64 @@ class ColleagueViewSet(ModelViewSet):
         
         return Response(response_data, status=status.HTTP_201_CREATED)
     
+    @action(detail=True, methods=['delete'], permission_classes=[IsAdminUser], url_path='photo-1973')
+    def delete_photo_1973(self, request, pk=None):
+        """
+        Delete the 1973 photo for a colleague (admin-only)
+        """
+        colleague = self.get_object()
+        
+        if not colleague.photo_1973:
+            return Response({
+                'error': 'No 1973 photo to delete'
+            }, status=status.HTTP_404_NOT_FOUND)
+        
+        # Delete the image file
+        try:
+            old_path = colleague.photo_1973.path
+            if os.path.isfile(old_path):
+                os.remove(old_path)
+        except Exception:
+            pass  # Ignore errors when deleting old file
+        
+        # Clear the field
+        colleague.photo_1973 = None
+        colleague.save()
+        
+        return Response({
+            'success': True,
+            'message': '1973 photo deleted successfully'
+        }, status=status.HTTP_200_OK)
+    
+    @action(detail=True, methods=['delete'], permission_classes=[IsAdminUser], url_path='latest-photo')
+    def delete_latest_photo(self, request, pk=None):
+        """
+        Delete the latest annual photo for a colleague (admin-only)
+        """
+        colleague = self.get_object()
+        
+        if not colleague.latest_photo:
+            return Response({
+                'error': 'No latest photo to delete'
+            }, status=status.HTTP_404_NOT_FOUND)
+        
+        # Delete the image file
+        try:
+            old_path = colleague.latest_photo.path
+            if os.path.isfile(old_path):
+                os.remove(old_path)
+        except Exception:
+            pass  # Ignore errors when deleting old file
+        
+        # Clear the field
+        colleague.latest_photo = None
+        colleague.save()
+        
+        return Response({
+            'success': True,
+            'message': 'Latest photo deleted successfully'
+        }, status=status.HTTP_200_OK)
+    
     @action(detail=True, methods=['delete'], permission_classes=[IsAdminUser], url_path='archive-photo/(?P<archive_id>[^/.]+)')
     def delete_archive_photo(self, request, pk=None, archive_id=None):
         """
