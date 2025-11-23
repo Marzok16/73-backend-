@@ -374,19 +374,19 @@ class MemoryPhotoViewSet(ModelViewSet):
                     # Get metadata for this specific image
                     metadata = photo_metadata.get(str(i), {})
                     
-                    # Prepare photo data
-                    photo_data = {
+                    # Prepare photo data using FormData approach
+                    photo_form_data = {
                         'category': category_id,
                         'title_ar': metadata.get('title', f'صورة تذكارية {i + 1}'),  # Default title if not provided
                         'description_ar': metadata.get('description', ''),  # Empty description if not provided
                         'is_featured': metadata.get('is_featured', 'false').lower() == 'true',
-                        'image': image_file
                     }
                     
-                    # Create the photo
-                    serializer = MemoryPhotoSerializer(data=photo_data, context={'request': request})
+                    # Create the photo with file
+                    serializer = MemoryPhotoSerializer(data=photo_form_data, context={'request': request})
                     if serializer.is_valid():
-                        photo = serializer.save(uploaded_by=request.user)
+                        # Save with the image file
+                        photo = serializer.save(uploaded_by=request.user, image=image_file)
                         created_photos.append(MemoryPhotoSerializer(photo, context={'request': request}).data)
                     else:
                         errors.append({
@@ -599,19 +599,19 @@ class MeetingPhotoViewSet(ModelViewSet):
                     # Get metadata for this specific image
                     metadata = photo_metadata.get(str(i), {})
                     
-                    # Prepare photo data
-                    photo_data = {
+                    # Prepare photo data using FormData approach
+                    photo_form_data = {
                         'category': category_id,
                         'title_ar': metadata.get('title', f'صورة لقاء {i + 1}'),  # Default title if not provided
                         'description_ar': metadata.get('description', ''),  # Empty description if not provided
                         'is_featured': metadata.get('is_featured', 'false').lower() == 'true',
-                        'image': image_file
                     }
                     
-                    # Create the photo
-                    serializer = MeetingPhotoSerializer(data=photo_data, context={'request': request})
+                    # Create the photo with file
+                    serializer = MeetingPhotoSerializer(data=photo_form_data, context={'request': request})
                     if serializer.is_valid():
-                        photo = serializer.save(uploaded_by=request.user)
+                        # Save with the image file
+                        photo = serializer.save(uploaded_by=request.user, image=image_file)
                         created_photos.append(MeetingPhotoSerializer(photo, context={'request': request}).data)
                     else:
                         errors.append({
