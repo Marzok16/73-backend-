@@ -3,12 +3,14 @@
 
 from django.db import migrations, models
 import django.db.models.deletion
+from django.conf import settings
 
 
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('api', '0019_remove_photo_category_remove_photoalbum_category_and_more'),
+        ('api', '0017_remove_graduation_year_from_colleague'),
+        migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
     operations = [
@@ -31,7 +33,7 @@ class Migration(migrations.Migration):
                 ('image', models.ImageField(upload_to='colleague_photos/archive/', verbose_name='صورة الأرشيف')),
                 ('uploaded_at', models.DateTimeField(auto_now_add=True, db_index=True, verbose_name='تاريخ الرفع')),
                 ('colleague', models.ForeignKey(db_index=True, on_delete=django.db.models.deletion.CASCADE, related_name='archive_photos', to='api.colleague', verbose_name='الزميل')),
-                ('uploaded_by', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, to='auth.user', verbose_name='رفع بواسطة')),
+                ('uploaded_by', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, to=settings.AUTH_USER_MODEL, verbose_name='رفع بواسطة')),
             ],
             options={
                 'verbose_name': 'صورة أرشيف زميل',
