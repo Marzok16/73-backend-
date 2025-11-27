@@ -501,7 +501,7 @@ class MeetingCategoryViewSet(ModelViewSet):
         
         # Add cache control headers for better performance
         response = Response(serializer.data)
-        response['Cache-Control'] = 'public, max-age=300'  # Cache for 5 minutes
+        response['Cache-Control'] = 'no-store, max-age=0'
         return response
 
 
