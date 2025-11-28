@@ -7,6 +7,7 @@ router.register(r'memory-categories', views.MemoryCategoryViewSet)
 router.register(r'memory-photos', views.MemoryPhotoViewSet)
 router.register(r'meeting-categories', views.MeetingCategoryViewSet)
 router.register(r'meeting-photos', views.MeetingPhotoViewSet)
+router.register(r'meeting-videos', views.MeetingVideoViewSet)
 router.register(r'colleagues', views.ColleagueViewSet)
 
 urlpatterns = [

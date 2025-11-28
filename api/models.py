@@ -97,6 +97,32 @@ class MeetingPhoto(models.Model):
         return self.title_ar
 
 
+class MeetingVideo(models.Model):
+    """Model for meeting YouTube videos"""
+    category = models.ForeignKey(MeetingCategory, on_delete=models.CASCADE, related_name='videos', verbose_name="فئة اللقاء", db_index=True)
+    title_ar = models.CharField(max_length=200, verbose_name="عنوان الفيديو")
+    description_ar = models.TextField(blank=True, null=True, verbose_name="وصف الفيديو")
+    youtube_url = models.URLField(max_length=500, verbose_name="رابط يوتيوب")
+    is_featured = models.BooleanField(default=False, verbose_name="فيديو مميز", db_index=True)
+    sort_order = models.IntegerField(default=0, verbose_name="ترتيب العرض")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="تاريخ الإنشاء", db_index=True)
+    updated_at = models.DateTimeField(auto_now=True, verbose_name="تاريخ التحديث")
+    added_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, verbose_name="أضيف بواسطة")
+    
+    class Meta:
+        verbose_name = "فيديو اللقاء"
+        verbose_name_plural = "فيديوهات اللقاءات"
+        ordering = ['sort_order', '-created_at']
+        indexes = [
+            models.Index(fields=['category', 'sort_order'], name='meeting_video_cat_sort_idx'),
+            models.Index(fields=['category', '-created_at'], name='meeting_video_cat_date_idx'),
+            models.Index(fields=['is_featured', '-created_at'], name='meeting_video_featured_idx'),
+        ]
+    
+    def __str__(self):
+        return self.title_ar
+
+
 class Colleague(models.Model):
     """Model for colleagues/alumni"""
     STATUS_CHOICES = [

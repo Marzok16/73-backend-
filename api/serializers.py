@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import MemoryCategory, MemoryPhoto, MeetingCategory, MeetingPhoto, Colleague, ColleagueArchiveImage
+from .models import MemoryCategory, MemoryPhoto, MeetingCategory, MeetingPhoto, MeetingVideo, Colleague, ColleagueArchiveImage
 
 class MemoryCategorySerializer(serializers.ModelSerializer):
     # Use IntegerField to receive annotated count from queryset
@@ -105,6 +105,26 @@ class MeetingCategoryDetailSerializer(serializers.ModelSerializer):
             'photos'
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']
+
+
+class MeetingVideoSerializer(serializers.ModelSerializer):
+    category_name = serializers.CharField(source='category.name', read_only=True)
+    
+    class Meta:
+        model = MeetingVideo
+        fields = [
+            'id', 'category', 'category_name', 'title_ar',
+            'description_ar', 'youtube_url', 'is_featured', 
+            'sort_order', 'created_at', 'updated_at', 'added_by'
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at', 'added_by']
+    
+    def create(self, validated_data):
+        # Set the added_by field to the current user
+        request = self.context.get('request')
+        if request and hasattr(request, 'user'):
+            validated_data['added_by'] = request.user
+        return super().create(validated_data)
 
 
 class ColleagueArchiveImageSerializer(serializers.ModelSerializer):

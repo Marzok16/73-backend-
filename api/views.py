@@ -11,10 +11,10 @@ from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter, OrderingFilter
 from django.db.models import Count, Prefetch
 from django.utils import timezone
-from .models import MemoryCategory, MemoryPhoto, MeetingCategory, MeetingPhoto, Colleague, ColleagueArchiveImage
+from .models import MemoryCategory, MemoryPhoto, MeetingCategory, MeetingPhoto, MeetingVideo, Colleague, ColleagueArchiveImage
 from .serializers import (
     MemoryCategorySerializer, MemoryPhotoSerializer, MemoryCategoryDetailSerializer,
-    MeetingCategorySerializer, MeetingPhotoSerializer, MeetingCategoryDetailSerializer,
+    MeetingCategorySerializer, MeetingPhotoSerializer, MeetingCategoryDetailSerializer, MeetingVideoSerializer,
     ColleagueSerializer, ColleagueArchiveImageSerializer
 )
 from .validators import validate_uploaded_image
@@ -651,6 +651,39 @@ class MeetingPhotoViewSet(ModelViewSet):
             return Response({
                 'error': f'Bulk upload failed: {str(e)}'
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class MeetingVideoViewSet(ModelViewSet):
+    """
+    ViewSet for managing meeting YouTube videos
+    """
+    queryset = MeetingVideo.objects.all()
+    serializer_class = MeetingVideoSerializer
+    permission_classes = [IsAuthenticated]
+    pagination_class = LargeResultsSetPagination
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+    filterset_fields = ['category', 'is_featured']
+    search_fields = ['title_ar', 'description_ar', 'youtube_url']
+    ordering_fields = ['title_ar', 'sort_order', 'created_at']
+    ordering = ['sort_order', '-created_at']
+    
+    def get_queryset(self):
+        """Optimize queryset with select_related for category"""
+        return MeetingVideo.objects.select_related('category', 'added_by')
+    
+    def get_permissions(self):
+        """
+        Instantiates and returns the list of permissions that this view requires.
+        """
+        if self.action in ['list', 'retrieve']:
+            permission_classes = []
+        else:
+            permission_classes = [IsAdminUser]
+        return [permission() for permission in permission_classes]
+    
+    def perform_create(self, serializer):
+        """Create meeting video"""
+        serializer.save(added_by=self.request.user)
 
 
 class ColleagueViewSet(ModelViewSet):

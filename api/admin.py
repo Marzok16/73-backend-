@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.utils.html import format_html
 from django.urls import reverse
 from django.utils.safestring import mark_safe
-from .models import MemoryCategory, MemoryPhoto, MeetingCategory, MeetingPhoto, Colleague, ColleagueArchiveImage
+from .models import MemoryCategory, MemoryPhoto, MeetingCategory, MeetingPhoto, MeetingVideo, Colleague, ColleagueArchiveImage
 
 @admin.register(MemoryCategory)
 class MemoryCategoryAdmin(admin.ModelAdmin):
@@ -181,6 +181,52 @@ class MeetingPhotoAdmin(admin.ModelAdmin):
         self.message_user(
             request, 
             f'تم حذف {photos_count} صورة لقاء وملفاتها من المجلد.',
+            level='INFO'
+        )
+        super().delete_queryset(request, queryset)
+
+
+@admin.register(MeetingVideo)
+class MeetingVideoAdmin(admin.ModelAdmin):
+    list_display = ['title_ar', 'category', 'youtube_url_display', 'is_featured', 'sort_order', 'created_at']
+    list_filter = ['category', 'is_featured', 'created_at']
+    search_fields = ['title_ar', 'description_ar', 'youtube_url']
+    list_editable = ['is_featured', 'sort_order']
+    ordering = ['category', 'sort_order', '-created_at']
+    readonly_fields = ['added_by']
+    fieldsets = [
+        ('المعلومات الأساسية', {
+            'fields': ['category', 'title_ar', 'description_ar']
+        }),
+        ('رابط الفيديو', {
+            'fields': ['youtube_url']
+        }),
+        ('الإعدادات', {
+            'fields': ['is_featured', 'sort_order', 'added_by']
+        })
+    ]
+    
+    def youtube_url_display(self, obj):
+        if obj.youtube_url:
+            return format_html('<a href="{}" target="_blank">🎬 فتح الفيديو</a>', obj.youtube_url)
+        return '-'
+    youtube_url_display.short_description = 'رابط يوتيوب'
+    
+    def delete_model(self, request, obj):
+        """Override delete to show confirmation"""
+        self.message_user(
+            request, 
+            f'تم حذف فيديو اللقاء "{obj.title_ar}".',
+            level='INFO'
+        )
+        super().delete_model(request, obj)
+    
+    def delete_queryset(self, request, queryset):
+        """Override bulk delete to show confirmation"""
+        videos_count = queryset.count()
+        self.message_user(
+            request, 
+            f'تم حذف {videos_count} فيديو لقاء.',
             level='INFO'
         )
         super().delete_queryset(request, queryset)
