@@ -61,7 +61,7 @@ class MeetingCategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = MeetingCategory
         fields = [
-            'id', 'name', 'description', 'color', 'year', 'created_at', 'updated_at',
+            'id', 'name', 'description', 'color', 'year', 'youtube_link', 'created_at', 'updated_at',
             'photos_count'
         ]
         read_only_fields = ['id', 'created_at', 'updated_at', 'photos_count']
@@ -101,7 +101,7 @@ class MeetingCategoryDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = MeetingCategory
         fields = [
-            'id', 'name', 'description', 'color', 'year', 'created_at', 'updated_at',
+            'id', 'name', 'description', 'color', 'year', 'youtube_link', 'created_at', 'updated_at',
             'photos'
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']

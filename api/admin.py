@@ -92,18 +92,27 @@ class MemoryPhotoAdmin(admin.ModelAdmin):
 
 @admin.register(MeetingCategory)
 class MeetingCategoryAdmin(admin.ModelAdmin):
-    list_display = ['name', 'photos_count', 'created_at']
+    list_display = ['name', 'photos_count', 'youtube_link_display', 'created_at']
     list_filter = ['created_at']
     search_fields = ['name', 'description']
     ordering = ['name']
     fieldsets = [
         ('المعلومات الأساسية', {
-            'fields': ['name', 'description']
+            'fields': ['name', 'description', 'year']
+        }),
+        ('رابط يوتيوب', {
+            'fields': ['youtube_link']
         }),
         ('التصميم', {
             'fields': ['color']
         })
     ]
+    
+    def youtube_link_display(self, obj):
+        if obj.youtube_link:
+            return format_html('<a href="{}" target="_blank">🎬 فتح الفيديو</a>', obj.youtube_link)
+        return '-'
+    youtube_link_display.short_description = 'فيديو يوتيوب'
     
     def photos_count(self, obj):
         count = obj.photos.count()

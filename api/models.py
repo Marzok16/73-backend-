@@ -57,6 +57,7 @@ class MeetingCategory(models.Model):
     description = models.TextField(blank=True, null=True, verbose_name="وصف فئة اللقاء")
     color = models.CharField(max_length=7, default="#10B981", verbose_name="لون الفئة")
     year = models.IntegerField(blank=True, null=True, verbose_name="السنة")
+    youtube_link = models.URLField(blank=True, null=True, verbose_name="رابط يوتيوب")
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="تاريخ الإنشاء")
     updated_at = models.DateTimeField(auto_now=True, verbose_name="تاريخ التحديث")
     
