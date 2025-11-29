@@ -715,6 +715,13 @@ class ColleagueViewSet(ModelViewSet):
             permission_classes = [IsAdminUser]
         return [permission() for permission in permission_classes]
     
+    def list(self, request, *args, **kwargs):
+        """Override list to add cache control headers"""
+        response = super().list(request, *args, **kwargs)
+        # Disable caching to ensure immediate updates after deletion
+        response['Cache-Control'] = 'no-store, max-age=0'
+        return response
+    
     def create(self, request, *args, **kwargs):
         """
         Override create to handle photo uploads during colleague creation
