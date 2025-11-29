@@ -11,10 +11,11 @@ from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter, OrderingFilter
 from django.db.models import Count, Prefetch
 from django.utils import timezone
-from .models import MemoryCategory, MemoryPhoto, MeetingCategory, MeetingPhoto, Colleague, ColleagueArchiveImage
+from rest_framework.exceptions import ValidationError as DRFValidationError
+from .models import MemoryCategory, MemoryPhoto, MeetingCategory, MeetingPhoto, MeetingVideo, Colleague, ColleagueArchiveImage
 from .serializers import (
     MemoryCategorySerializer, MemoryPhotoSerializer, MemoryCategoryDetailSerializer,
-    MeetingCategorySerializer, MeetingPhotoSerializer, MeetingCategoryDetailSerializer,
+    MeetingCategorySerializer, MeetingPhotoSerializer, MeetingCategoryDetailSerializer, MeetingVideoSerializer,
     ColleagueSerializer, ColleagueArchiveImageSerializer
 )
 from .validators import validate_uploaded_image
@@ -653,6 +654,39 @@ class MeetingPhotoViewSet(ModelViewSet):
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
+class MeetingVideoViewSet(ModelViewSet):
+    """
+    ViewSet for managing meeting YouTube videos
+    """
+    queryset = MeetingVideo.objects.all()
+    serializer_class = MeetingVideoSerializer
+    permission_classes = [IsAuthenticated]
+    pagination_class = LargeResultsSetPagination
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+    filterset_fields = ['category', 'is_featured']
+    search_fields = ['title_ar', 'description_ar', 'youtube_url']
+    ordering_fields = ['title_ar', 'sort_order', 'created_at']
+    ordering = ['sort_order', '-created_at']
+    
+    def get_queryset(self):
+        """Optimize queryset with select_related for category"""
+        return MeetingVideo.objects.select_related('category', 'added_by')
+    
+    def get_permissions(self):
+        """
+        Instantiates and returns the list of permissions that this view requires.
+        """
+        if self.action in ['list', 'retrieve']:
+            permission_classes = []
+        else:
+            permission_classes = [IsAdminUser]
+        return [permission() for permission in permission_classes]
+    
+    def perform_create(self, serializer):
+        """Create meeting video"""
+        serializer.save(added_by=self.request.user)
+
+
 class ColleagueViewSet(ModelViewSet):
     """
     ViewSet for managing colleagues (الزملاء)
@@ -737,8 +771,97 @@ class ColleagueViewSet(ModelViewSet):
             response_serializer = ColleagueSerializer(colleague, context={'request': request})
             return Response(response_serializer.data, status=status.HTTP_201_CREATED)
             
+        except DRFValidationError as e:
+            # Handle DRF validation errors and extract clean messages
+            error_detail = e.detail
+            error_response = {}
+            
+            # Process each field's errors
+            for field, errors in error_detail.items():
+                if isinstance(errors, list):
+                    # Extract the string message from ErrorDetail objects
+                    error_response[field] = str(errors[0]) if errors else str(errors)
+                else:
+                    error_response[field] = str(errors)
+            
+            logger.error(f"Validation error creating colleague: {error_response}")
+            return Response(error_response, status=status.HTTP_400_BAD_REQUEST)
+            
         except Exception as e:
             logger.error(f"Error creating colleague: {str(e)}")
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+    
+    def update(self, request, *args, **kwargs):
+        """
+        Override update to handle photo uploads during colleague update
+        """
+        try:
+            partial = kwargs.pop('partial', False)
+            instance = self.get_object()
+            
+            # Extract main colleague data
+            colleague_data = {}
+            
+            if 'name' in request.data:
+                colleague_data['name'] = request.data.get('name')
+            if 'position' in request.data:
+                colleague_data['position'] = request.data.get('position', '')
+            if 'current_workplace' in request.data:
+                colleague_data['current_workplace'] = request.data.get('current_workplace', '')
+            if 'description' in request.data:
+                colleague_data['description'] = request.data.get('description', '')
+            if 'status' in request.data:
+                colleague_data['status'] = request.data.get('status', 'active')
+            if 'achievements' in request.data:
+                colleague_data['achievements'] = request.data.get('achievements', '')
+            if 'contact_info' in request.data:
+                colleague_data['contact_info'] = request.data.get('contact_info', '')
+            if 'is_featured' in request.data:
+                colleague_data['is_featured'] = request.data.get('is_featured', 'false').lower() == 'true'
+            
+            # Add deceased-specific fields
+            if 'death_year' in request.data:
+                colleague_data['death_year'] = request.data.get('death_year') or None
+            if 'relative_phone' in request.data:
+                colleague_data['relative_phone'] = request.data.get('relative_phone') or None
+            if 'relationship_type' in request.data:
+                colleague_data['relationship_type'] = request.data.get('relationship_type') or None
+            
+            # Handle file uploads
+            if 'photo' in request.FILES:
+                colleague_data['photo'] = request.FILES['photo']
+            if 'photo_1973' in request.FILES:
+                colleague_data['photo_1973'] = request.FILES['photo_1973']
+            if 'latest_photo' in request.FILES:
+                colleague_data['latest_photo'] = request.FILES['latest_photo']
+            
+            # Update colleague
+            serializer = self.get_serializer(instance, data=colleague_data, partial=True)
+            serializer.is_valid(raise_exception=True)
+            colleague = serializer.save()
+            
+            # Return full colleague data
+            response_serializer = ColleagueSerializer(colleague, context={'request': request})
+            return Response(response_serializer.data, status=status.HTTP_200_OK)
+            
+        except DRFValidationError as e:
+            # Handle DRF validation errors and extract clean messages
+            error_detail = e.detail
+            error_response = {}
+            
+            # Process each field's errors
+            for field, errors in error_detail.items():
+                if isinstance(errors, list):
+                    # Extract the string message from ErrorDetail objects
+                    error_response[field] = str(errors[0]) if errors else str(errors)
+                else:
+                    error_response[field] = str(errors)
+            
+            logger.error(f"Validation error updating colleague: {error_response}")
+            return Response(error_response, status=status.HTTP_400_BAD_REQUEST)
+            
+        except Exception as e:
+            logger.error(f"Error updating colleague: {str(e)}")
             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
     
     def destroy(self, request, *args, **kwargs):
@@ -934,6 +1057,35 @@ class ColleagueViewSet(ModelViewSet):
             response_data['error_count'] = len(errors)
         
         return Response(response_data, status=status.HTTP_201_CREATED)
+    
+    @action(detail=True, methods=['delete'], permission_classes=[IsAdminUser], url_path='photo')
+    def delete_photo(self, request, pk=None):
+        """
+        Delete the main photo for a colleague (admin-only)
+        """
+        colleague = self.get_object()
+        
+        if not colleague.photo:
+            return Response({
+                'error': 'No photo to delete'
+            }, status=status.HTTP_404_NOT_FOUND)
+        
+        # Delete the image file
+        try:
+            old_path = colleague.photo.path
+            if os.path.isfile(old_path):
+                os.remove(old_path)
+        except Exception:
+            pass  # Ignore errors when deleting old file
+        
+        # Clear the field
+        colleague.photo = None
+        colleague.save()
+        
+        return Response({
+            'success': True,
+            'message': 'Photo deleted successfully'
+        }, status=status.HTTP_200_OK)
     
     @action(detail=True, methods=['delete'], permission_classes=[IsAdminUser], url_path='photo-1973')
     def delete_photo_1973(self, request, pk=None):
