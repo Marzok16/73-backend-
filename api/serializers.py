@@ -163,6 +163,32 @@ class ColleagueSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['id', 'created_at', 'updated_at', 'archive_photos']
     
+    def validate_name(self, value):
+        """
+        Validate that colleague name is unique (case-insensitive).
+        This prevents duplicate names while being production-friendly and preserving existing data.
+        """
+        if not value:
+            raise serializers.ValidationError("الاسم مطلوب.")
+        
+        # Normalize the name for comparison (strip whitespace, case-insensitive)
+        normalized_name = value.strip()
+        
+        # Check for existing colleague with the same name (case-insensitive)
+        # Exclude the current instance when updating
+        existing_query = Colleague.objects.filter(name__iexact=normalized_name)
+        
+        # If updating, exclude the current instance
+        if self.instance:
+            existing_query = existing_query.exclude(pk=self.instance.pk)
+        
+        if existing_query.exists():
+            raise serializers.ValidationError(
+                "زميل بهذا الاسم موجود بالفعل. الرجاء استخدام اسم مختلف."
+            )
+        
+        return normalized_name
+    
     def get_photo_url(self, obj):
         if obj.photo:
             request = self.context.get('request')
