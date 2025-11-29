@@ -183,10 +183,8 @@ class ColleagueSerializer(serializers.ModelSerializer):
             existing_query = existing_query.exclude(pk=self.instance.pk)
         
         if existing_query.exists():
-            existing_colleague = existing_query.first()
             raise serializers.ValidationError(
-                f"الزميل موجود مسبقاً! يوجد زميل بنفس الاسم (ID: {existing_colleague.id}). "
-                "الرجاء التأكد من عدم تكرار التسجيل أو استخدام اسم مختلف."
+                "هذا الزميل مسجل مسبقا في النظام. الرجاء التأكد من عدم التكرار."
             )
         
         return normalized_name
