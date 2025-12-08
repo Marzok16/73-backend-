@@ -36,7 +36,7 @@ class LoginRateThrottle(AnonRateThrottle):
 
 class UploadRateThrottle(UserRateThrottle):
     """Rate limiting for file uploads"""
-    rate = '20/hour'
+    rate = '100/hour'
     scope = 'upload'
 
 # Pagination classes
@@ -352,7 +352,7 @@ class MemoryPhotoViewSet(ModelViewSet):
                 }, status=status.HTTP_400_BAD_REQUEST)
             
             # Limit number of files per upload to prevent DoS
-            max_files = 50
+            max_files = 200
             if len(uploaded_files) > max_files:
                 return Response({
                     'error': f'Too many files. Maximum {max_files} files per upload.'
@@ -581,7 +581,7 @@ class MeetingPhotoViewSet(ModelViewSet):
                 }, status=status.HTTP_400_BAD_REQUEST)
             
             # Limit number of files per upload to prevent DoS
-            max_files = 50
+            max_files = 200
             if len(uploaded_files) > max_files:
                 return Response({
                     'error': f'Too many files. Maximum {max_files} files per upload.'

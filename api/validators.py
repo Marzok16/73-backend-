@@ -16,22 +16,22 @@ except (ImportError, OSError):
 def validate_image_size(image):
     """
     Validate image file size
-    Maximum size: 10MB
+    Maximum size: 100MB
     """
-    max_size = 10 * 1024 * 1024  # 10MB
+    max_size = 100 * 1024 * 1024  # 100MB
     if image.size > max_size:
         raise ValidationError(
-            f'Image size cannot exceed 10MB. Current size: {image.size / (1024*1024):.2f}MB'
+            f'Image size cannot exceed 100MB. Current size: {image.size / (1024*1024):.2f}MB'
         )
 
 
 def validate_image_dimensions(image):
     """
     Validate image dimensions to prevent memory exhaustion
-    Maximum dimensions: 4000x4000 pixels
+    Maximum dimensions: 10000x10000 pixels
     """
-    max_width = 4000
-    max_height = 4000
+    max_width = 10000
+    max_height = 10000
     
     try:
         img = Image.open(image)
