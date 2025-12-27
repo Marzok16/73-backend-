@@ -53,15 +53,15 @@ class MemoryCategoryAdmin(admin.ModelAdmin):
 
 @admin.register(MemoryPhoto)
 class MemoryPhotoAdmin(admin.ModelAdmin):
-    list_display = ['title_ar', 'category', 'is_featured', 'created_at']
+    list_display = ['id', 'category', 'is_featured', 'created_at']
     list_filter = ['category', 'is_featured', 'created_at']
-    search_fields = ['title_ar', 'description_ar']
+    search_fields = ['description_ar']
     list_editable = ['is_featured']
     ordering = ['-created_at']
     readonly_fields = ['uploaded_by']
     fieldsets = [
         ('المعلومات الأساسية', {
-            'fields': ['category', 'title_ar', 'description_ar']
+            'fields': ['category', 'description_ar']
         }),
         ('الصورة', {
             'fields': ['image', 'thumbnail']
@@ -75,7 +75,7 @@ class MemoryPhotoAdmin(admin.ModelAdmin):
         """Override delete to show warning about file deletion"""
         self.message_user(
             request, 
-            f'تم حذف الصورة التذكارية "{obj.title_ar}" وملفاتها من المجلد.',
+            f'تم حذف الصورة التذكارية رقم {obj.id} وملفاتها من المجلد.',
             level='INFO'
         )
         super().delete_model(request, obj)
@@ -148,15 +148,15 @@ class MeetingCategoryAdmin(admin.ModelAdmin):
 
 @admin.register(MeetingPhoto)
 class MeetingPhotoAdmin(admin.ModelAdmin):
-    list_display = ['title_ar', 'category', 'is_featured', 'created_at']
+    list_display = ['id', 'category', 'is_featured', 'created_at']
     list_filter = ['category', 'is_featured', 'created_at']
-    search_fields = ['title_ar', 'description_ar']
+    search_fields = ['description_ar']
     list_editable = ['is_featured']
     ordering = ['-created_at']
     readonly_fields = ['uploaded_by']
     fieldsets = [
         ('المعلومات الأساسية', {
-            'fields': ['category', 'title_ar', 'description_ar']
+            'fields': ['category', 'description_ar']
         }),
         ('الصورة', {
             'fields': ['image', 'thumbnail']
@@ -170,7 +170,7 @@ class MeetingPhotoAdmin(admin.ModelAdmin):
         """Override delete to show warning about file deletion"""
         self.message_user(
             request, 
-            f'تم حذف صورة اللقاء "{obj.title_ar}" وملفاتها من المجلد.',
+            f'تم حذف صورة اللقاء رقم {obj.id} وملفاتها من المجلد.',
             level='INFO'
         )
         super().delete_model(request, obj)
@@ -188,15 +188,15 @@ class MeetingPhotoAdmin(admin.ModelAdmin):
 
 @admin.register(MeetingVideo)
 class MeetingVideoAdmin(admin.ModelAdmin):
-    list_display = ['title_ar', 'category', 'youtube_url_display', 'is_featured', 'sort_order', 'created_at']
+    list_display = ['id', 'category', 'youtube_url_display', 'is_featured', 'sort_order', 'created_at']
     list_filter = ['category', 'is_featured', 'created_at']
-    search_fields = ['title_ar', 'description_ar', 'youtube_url']
+    search_fields = ['description_ar', 'youtube_url']
     list_editable = ['is_featured', 'sort_order']
     ordering = ['category', 'sort_order', '-created_at']
     readonly_fields = ['added_by']
     fieldsets = [
         ('المعلومات الأساسية', {
-            'fields': ['category', 'title_ar', 'description_ar']
+            'fields': ['category', 'description_ar']
         }),
         ('رابط الفيديو', {
             'fields': ['youtube_url']
@@ -216,7 +216,7 @@ class MeetingVideoAdmin(admin.ModelAdmin):
         """Override delete to show confirmation"""
         self.message_user(
             request, 
-            f'تم حذف فيديو اللقاء "{obj.title_ar}".',
+            f'تم حذف فيديو اللقاء رقم {obj.id}.',
             level='INFO'
         )
         super().delete_model(request, obj)

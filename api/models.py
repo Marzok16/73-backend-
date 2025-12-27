@@ -27,7 +27,6 @@ class MemoryCategory(models.Model):
 class MemoryPhoto(models.Model):
     """Model for memory photos within categories"""
     category = models.ForeignKey(MemoryCategory, on_delete=models.CASCADE, related_name='photos', verbose_name="الفئة", db_index=True)
-    title_ar = models.CharField(max_length=200, verbose_name="عنوان الصورة")
     description_ar = models.TextField(blank=True, null=True, verbose_name="وصف الصورة")
     image = models.ImageField(upload_to='memory_photos/', verbose_name="الصورة")
     thumbnail = models.ImageField(upload_to='memory_thumbnails/', blank=True, null=True, verbose_name="صورة مصغرة")
@@ -48,7 +47,7 @@ class MemoryPhoto(models.Model):
         ]
     
     def __str__(self):
-        return self.title_ar
+        return f"Memory Photo {self.id}"
 
 
 class MeetingCategory(models.Model):
@@ -73,7 +72,6 @@ class MeetingCategory(models.Model):
 class MeetingPhoto(models.Model):
     """Model for meeting photos within categories"""
     category = models.ForeignKey(MeetingCategory, on_delete=models.CASCADE, related_name='photos', verbose_name="فئة اللقاء", db_index=True)
-    title_ar = models.CharField(max_length=200, verbose_name="عنوان صورة اللقاء")
     description_ar = models.TextField(blank=True, null=True, verbose_name="وصف صورة اللقاء")
     image = models.ImageField(upload_to='meeting_photos/', verbose_name="صورة اللقاء")
     thumbnail = models.ImageField(upload_to='meeting_thumbnails/', blank=True, null=True, verbose_name="صورة مصغرة")
@@ -94,13 +92,12 @@ class MeetingPhoto(models.Model):
         ]
     
     def __str__(self):
-        return self.title_ar
+        return f"Memory Photo {self.id}"
 
 
 class MeetingVideo(models.Model):
     """Model for meeting YouTube videos"""
     category = models.ForeignKey(MeetingCategory, on_delete=models.CASCADE, related_name='videos', verbose_name="فئة اللقاء", db_index=True)
-    title_ar = models.CharField(max_length=200, verbose_name="عنوان الفيديو")
     description_ar = models.TextField(blank=True, null=True, verbose_name="وصف الفيديو")
     youtube_url = models.URLField(max_length=500, verbose_name="رابط يوتيوب")
     is_featured = models.BooleanField(default=False, verbose_name="فيديو مميز", db_index=True)
@@ -120,7 +117,7 @@ class MeetingVideo(models.Model):
         ]
     
     def __str__(self):
-        return self.title_ar
+        return f"Memory Photo {self.id}"
 
 
 class Colleague(models.Model):

@@ -25,7 +25,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = config('SECRET_KEY', default='django-insecure-yv!kz-43lgp^0789dlq848+epngu$fq=us+y9s4ef=r&+%w#ax')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = config('DEBUG', default=False, cast=bool)
+# Default to True if running on localhost (for local development)
+default_debug = 'localhost' in config('ALLOWED_HOSTS', default='localhost,127.0.0.1') or '127.0.0.1' in config('ALLOWED_HOSTS', default='localhost,127.0.0.1')
+DEBUG = config('DEBUG', default=default_debug, cast=bool)
 
 # Validate SECRET_KEY in production (AFTER DEBUG is defined)
 if not DEBUG and SECRET_KEY == 'django-insecure-yv!kz-43lgp^0789dlq848+epngu$fq=us+y9s4ef=r&+%w#ax':
@@ -57,6 +59,10 @@ CSRF_TRUSTED_ORIGINS = [
     'http://72.61.147.23',
     'http://localhost',
     'http://127.0.0.1',
+    'http://localhost:8081',
+    'http://127.0.0.1:8081',
+    'https://localhost',
+    'https://127.0.0.1',
 ]
 
 # CSRF Cookie settings for admin
@@ -85,6 +91,7 @@ INSTALLED_APPS = [
     'rest_framework.authtoken',
     'django_filters',
     'corsheaders',
+    # 'django_extensions',  # For HTTPS support with runserver_plus (optional - install with: pip install django-extensions)
     'api',
     'memories',
 ]
@@ -107,12 +114,25 @@ TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
         'DIRS': [BASE_DIR / 'templates'],
-        'APP_DIRS': True,
+        # When custom loaders are defined, APP_DIRS must be False
+        'APP_DIRS': False,
         'OPTIONS': {
             'context_processors': [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+            ],
+            # Disable template caching in development to ensure changes are picked up immediately
+            'debug': DEBUG,
+            # Use non-cached loaders in DEBUG mode to ensure template changes are picked up immediately
+            'loaders': [
+                'django.template.loaders.filesystem.Loader',
+                'django.template.loaders.app_directories.Loader',
+            ] if DEBUG else [
+                ('django.template.loaders.cached.Loader', [
+                    'django.template.loaders.filesystem.Loader',
+                    'django.template.loaders.app_directories.Loader',
+                ]),
             ],
         },
     },
@@ -229,16 +249,24 @@ REST_FRAMEWORK = {
 
 # CORS Configuration for Frontend Integration
 # Separate development and production origins for better security
+
+# Always allow localhost origins for local development
+localhost_origins = [
+    "http://localhost:5173",  # Vite default port
+    "http://127.0.0.1:5173",
+    "http://localhost:3000",  # Common React dev port
+    "http://127.0.0.1:3000",
+    "http://localhost:8080",  # Alternative dev port
+    "http://127.0.0.1:8080",
+    "http://localhost:8081",  # Alternative dev port
+    "http://127.0.0.1:8081",
+    "https://localhost:8000",  # HTTPS localhost
+    "https://127.0.0.1:8000",
+]
+
 if DEBUG:
-    # Development origins - allow localhost
-    CORS_ALLOWED_ORIGINS = [
-        "http://localhost:5173",  # Vite default port
-        "http://127.0.0.1:5173",
-        "http://localhost:3000",  # Common React dev port
-        "http://127.0.0.1:3000",
-        "http://localhost:8080",  # Alternative dev port
-        "http://127.0.0.1:8080",
-    ]
+    # Development origins - allow localhost (both HTTP and HTTPS)
+    CORS_ALLOWED_ORIGINS = localhost_origins.copy()
 else:
     # Production origins - HTTPS ONLY for security
     CORS_ALLOWED_ORIGINS = [
@@ -249,6 +277,9 @@ else:
     cors_origins_env = config('CORS_ALLOWED_ORIGINS', default=None)
     if cors_origins_env:
         CORS_ALLOWED_ORIGINS = [s.strip() for s in cors_origins_env.split(',') if s.strip()]
+    # Also allow localhost in production if explicitly set (for testing)
+    if 'localhost' in ALLOWED_HOSTS or '127.0.0.1' in ALLOWED_HOSTS:
+        CORS_ALLOWED_ORIGINS.extend(localhost_origins)
 
 CORS_ALLOW_CREDENTIALS = True
 
@@ -287,3 +318,21 @@ if not DEBUG:
 
 # WhiteNoise configuration for static files
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+
+# Suppress HTTPS connection attempt warnings in development
+if DEBUG:
+    import logging
+    # Filter out HTTPS connection attempt warnings from development server
+    class HTTPSWarningFilter(logging.Filter):
+        def filter(self, record):
+            message = str(record.getMessage())
+            # Only filter out the specific HTTPS warning messages
+            if 'You\'re accessing the development server over HTTPS' in message:
+                return False
+            if 'Bad HTTP' in message and 'HTTPS' in message:
+                return False
+            return True
+    
+    # Apply filter to the server logger
+    server_logger = logging.getLogger('django.server')
+    server_logger.addFilter(HTTPSWarningFilter())

@@ -23,8 +23,10 @@ from django.contrib.auth import authenticate
 from django.contrib.auth.models import User
 from rest_framework.authtoken.models import Token
 from django.db import transaction
+from django.http import HttpResponse
 import os
 import logging
+import io
 
 logger = logging.getLogger(__name__)
 
@@ -197,6 +199,52 @@ def admin_login(request):
         'token': token.key 
     }, status=status.HTTP_200_OK)
 
+@api_view(['GET'])
+def download_memory_book(request):
+    """
+    Generate and download a Word document (.docx) for the College Memory Book.
+    Returns a downloadable .docx file with meetings, colleagues, and memories in Arabic (RTL).
+    """
+    try:
+        from .word_generator import generate_memory_book_word
+        
+        # Generate the Word document
+        doc = generate_memory_book_word()
+        
+        # Save to BytesIO buffer
+        buffer = io.BytesIO()
+        doc.save(buffer)
+        buffer.seek(0)
+        
+        # Create HTTP response with Word document
+        response = HttpResponse(
+            buffer.getvalue(),
+            content_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        )
+        response['Content-Disposition'] = 'attachment; filename="كتاب_الذكريات_الجامعية.docx"'
+        response['Content-Length'] = len(buffer.getvalue())
+        
+        return response
+        
+    except ImportError as e:
+        logger.error(f"Error importing word_generator: {str(e)}")
+        import traceback
+        error_details = traceback.format_exc()
+        logger.error(f"Full traceback: {error_details}")
+        return Response({
+            'error': 'Word generator module not available. Please install python-docx: pip install python-docx',
+            'details': str(e)
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    except Exception as e:
+        logger.error(f"Error generating Word document: {str(e)}")
+        import traceback
+        error_details = traceback.format_exc()
+        logger.error(f"Full traceback: {error_details}")
+        return Response({
+            'error': f'Failed to generate Word document: {str(e)}',
+            'details': error_details
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 class MemoryCategoryViewSet(ModelViewSet):
     """
     ViewSet for managing memory categories (صور تذكارية)
@@ -289,8 +337,8 @@ class MemoryPhotoViewSet(ModelViewSet):
     pagination_class = LargeResultsSetPagination
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_fields = ['category', 'is_featured']
-    search_fields = ['title_ar', 'description_ar']
-    ordering_fields = ['title_ar', 'created_at']
+    search_fields = ['description_ar']
+    ordering_fields = ['created_at']
     ordering = ['-created_at']
     
     def get_queryset(self):
@@ -391,7 +439,6 @@ class MemoryPhotoViewSet(ModelViewSet):
                     # Create memory photo instance directly
                     photo = MemoryPhoto.objects.create(
                         category=category,
-                        title_ar=metadata.get('title', f'صورة تذكارية {i + 1}'),
                         description_ar=metadata.get('description', ''),
                         is_featured=metadata.get('is_featured', 'false').lower() == 'true',
                         image=image_file,
@@ -517,8 +564,8 @@ class MeetingPhotoViewSet(ModelViewSet):
     pagination_class = LargeResultsSetPagination
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_fields = ['category', 'is_featured']
-    search_fields = ['title_ar', 'description_ar']
-    ordering_fields = ['title_ar', 'created_at']
+    search_fields = ['description_ar']
+    ordering_fields = ['created_at']
     ordering = ['-created_at']
     
     def get_queryset(self):
@@ -620,7 +667,6 @@ class MeetingPhotoViewSet(ModelViewSet):
                     # Create meeting photo instance directly
                     photo = MeetingPhoto.objects.create(
                         category=category,
-                        title_ar=metadata.get('title', f'صورة لقاء {i + 1}'),
                         description_ar=metadata.get('description', ''),
                         is_featured=metadata.get('is_featured', 'false').lower() == 'true',
                         image=image_file,
@@ -664,8 +710,8 @@ class MeetingVideoViewSet(ModelViewSet):
     pagination_class = LargeResultsSetPagination
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_fields = ['category', 'is_featured']
-    search_fields = ['title_ar', 'description_ar', 'youtube_url']
-    ordering_fields = ['title_ar', 'sort_order', 'created_at']
+    search_fields = ['description_ar', 'youtube_url']
+    ordering_fields = ['sort_order', 'created_at']
     ordering = ['sort_order', '-created_at']
     
     def get_queryset(self):

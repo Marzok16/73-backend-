@@ -312,43 +312,6 @@
     {% endif %}
   </div>
 
-  <!-- Meeting Photos Section (اللقاءات) -->
-  <div class="section">
-    <div class="section-header">
-      <h2>اللقاءات</h2>
-      <div class="section-description">صور اللقاءات والمناسبات الجامعية</div>
-    </div>
-
-    {% if meeting_categories %}
-      {% for category in meeting_categories %}
-        <div class="category-name">{{ category.name }}</div>
-        {% if category.description %}
-          <div class="category-description">{{ category.description }}</div>
-        {% endif %}
-
-        {% if category.photos.all %}
-          <div class="photo-grid">
-            {% for photo in category.photos.all %}
-              <div class="photo-item">
-                {% if photo.image %}
-                  <img src="{{ base_url }}{{ photo.image.url }}" alt="{{ photo.title_ar }}" />
-                {% endif %}
-                <h3 class="photo-title">{{ photo.title_ar }}</h3>
-                {% if photo.description_ar %}
-                  <p class="photo-description">{{ photo.description_ar }}</p>
-                {% endif %}
-              </div>
-            {% endfor %}
-          </div>
-        {% else %}
-          <div class="empty-section">لا توجد صور في هذه الفئة</div>
-        {% endif %}
-      {% endfor %}
-    {% else %}
-      <div class="empty-section">لا توجد فئات أو صور للقاءات. يرجى إضافة الصور عبر لوحة التحكم.</div>
-    {% endif %}
-  </div>
-
   <!-- Colleagues Section (الزملاء) -->
   <div class="section">
     <div class="section-header">

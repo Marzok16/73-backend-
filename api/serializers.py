@@ -21,7 +21,7 @@ class MemoryPhotoSerializer(serializers.ModelSerializer):
     class Meta:
         model = MemoryPhoto
         fields = [
-            'id', 'category', 'category_name', 'title_ar',
+            'id', 'category', 'category_name',
             'description_ar', 'image', 'image_url', 'thumbnail',
             'is_featured', 'created_at', 'updated_at', 'uploaded_by'
         ]
@@ -74,7 +74,7 @@ class MeetingPhotoSerializer(serializers.ModelSerializer):
     class Meta:
         model = MeetingPhoto
         fields = [
-            'id', 'category', 'category_name', 'title_ar',
+            'id', 'category', 'category_name',
             'description_ar', 'image', 'image_url', 'thumbnail',
             'is_featured', 'created_at', 'updated_at', 'uploaded_by'
         ]
@@ -113,7 +113,7 @@ class MeetingVideoSerializer(serializers.ModelSerializer):
     class Meta:
         model = MeetingVideo
         fields = [
-            'id', 'category', 'category_name', 'title_ar',
+            'id', 'category', 'category_name',
             'description_ar', 'youtube_url', 'is_featured', 
             'sort_order', 'created_at', 'updated_at', 'added_by'
         ]

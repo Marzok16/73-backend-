@@ -15,5 +15,6 @@ urlpatterns = [
     path('health/', views.health_check, name='health_check'),
     path('dashboard/stats/', views.dashboard_stats, name='dashboard_stats'),
     path('auth/admin-login/', views.admin_login, name='admin_login'),
+    path('download-memory-book/', views.download_memory_book, name='download_memory_book'),
     path('', include(router.urls)),
 ]

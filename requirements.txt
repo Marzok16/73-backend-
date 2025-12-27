@@ -16,3 +16,7 @@ cairosvg==2.7.1
 tinycss2>=1.4.0
 cssselect2>=0.8.0
 whitenoise==6.7.0
+django-extensions==3.2.3
+werkzeug==3.0.1
+pyOpenSSL>=25.0.0
+python-docx>=1.1.0

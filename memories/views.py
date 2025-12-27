@@ -8,7 +8,7 @@ from rest_framework.routers import DefaultRouter
 from django.conf import settings
 from .models import Memory
 from .serializers import MemorySerializer
-from api.models import MemoryCategory, MeetingCategory, Colleague
+from api.models import MemoryCategory, Colleague
 
 
 class MemoryViewSet(ReadOnlyModelViewSet):
@@ -82,9 +82,6 @@ def generate_memory_book_pdf(request):
 	# Using prefetch_related to optimize database queries
 	memory_categories = MemoryCategory.objects.prefetch_related('photos').all().order_by('name')
 	
-	# Get all meeting categories with their photos (اللقاءات)
-	meeting_categories = MeetingCategory.objects.prefetch_related('photos').all().order_by('name')
-	
 	# Get all colleagues (الزملاء)
 	colleagues = Colleague.objects.all().order_by('name')
 	
@@ -101,12 +98,10 @@ def generate_memory_book_pdf(request):
 	
 	context = {
 		'memory_categories': memory_categories,
-		'meeting_categories': meeting_categories,
 		'colleagues': colleagues,
 		'base_url': request.build_absolute_uri('/'),
 		'media_url': media_url,
 		'has_memory_photos': memory_categories.filter(photos__isnull=False).exists(),
-		'has_meeting_photos': meeting_categories.filter(photos__isnull=False).exists(),
 		'has_colleagues': colleagues.exists(),
 	}
 	
