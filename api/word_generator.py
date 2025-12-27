@@ -93,7 +93,19 @@ def add_image_to_doc(doc, image_path, width_inches=3.0, height_inches=None):
     try:
         # Open image to get dimensions
         img = Image.open(image_path)
+        img.verify()  # Verify image is not corrupted
+        img = Image.open(image_path)  # Re-open after verify
         img_width, img_height = img.size
+        
+        # Handle corrupted images with zero dimensions - use default aspect ratio
+        if img_width == 0 or img_height == 0:
+            print(f"Image has zero dimensions, using default size: {image_path}")
+            # Just add with width only, let python-docx figure out height
+            paragraph = doc.add_paragraph()
+            paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            run = paragraph.add_run()
+            run.add_picture(image_path, width=Inches(width_inches))
+            return True
         
         # Calculate aspect ratio
         aspect_ratio = img_width / img_height
@@ -116,8 +128,16 @@ def add_image_to_doc(doc, image_path, width_inches=3.0, height_inches=None):
         
         return True
     except Exception as e:
-        print(f"Error adding image {image_path}: {e}")
-        return False
+        # Last resort: try adding image with just width
+        try:
+            paragraph = doc.add_paragraph()
+            paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            run = paragraph.add_run()
+            run.add_picture(image_path, width=Inches(width_inches))
+            return True
+        except Exception as e2:
+            print(f"Error adding image {image_path}: {e2}")
+            return False
 
 
 def generate_memory_book_word():
