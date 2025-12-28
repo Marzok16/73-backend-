@@ -4,6 +4,7 @@
 # KFUPM73 Deployment Script
 # ===========================================
 # Usage:
+#   chmod +x ~/college/73-backend-/deploy.sh && ./deploy.sh backend
 #   ./deploy.sh frontend-prepare  - Prepare frontend for WinSCP upload
 #   ./deploy.sh frontend-finish   - Finish frontend deployment (after WinSCP)
 #   ./deploy.sh backend           - Deploy backend changes
