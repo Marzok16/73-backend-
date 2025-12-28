@@ -39,9 +39,9 @@ def add_section_title(doc, title):
     """Add a section title with page break before."""
     # Add page break
     doc.add_page_break()
-    # Add title
+    # Add title - LEFT aligned (appears on right in RTL)
     paragraph = doc.add_paragraph()
-    paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    paragraph.alignment = WD_ALIGN_PARAGRAPH.LEFT
     set_rtl_paragraph(paragraph)
     
     run = paragraph.add_run(title)
@@ -118,6 +118,46 @@ def add_image_to_doc(doc, image_path, width_inches=3.0, height_inches=None):
     except Exception as e:
         print(f"Error adding image {image_path}: {e}")
         return False
+
+
+def calculate_image_size_with_max_height(image_path, max_height_inches=5.25, preferred_width=None):
+    """
+    Calculate image dimensions with a maximum height constraint.
+    If image is smaller than max_height, keep original size.
+    If image is bigger, resize to fit max_height while maintaining aspect ratio.
+    Returns (width_inches, height_inches)
+    """
+    if not os.path.exists(image_path):
+        return None, None
+    
+    try:
+        img = Image.open(image_path)
+        img_width, img_height = img.size
+        aspect_ratio = img_width / img_height
+        
+        # Calculate height based on preferred width if provided
+        if preferred_width:
+            calculated_height = preferred_width / aspect_ratio
+        else:
+            # Use a default width to calculate height
+            calculated_height = 3.0 / aspect_ratio
+        
+        # If calculated height exceeds max_height, resize
+        if calculated_height > max_height_inches:
+            height_inches = max_height_inches
+            width_inches = height_inches * aspect_ratio
+        else:
+            # Keep original size (use preferred width or default)
+            if preferred_width:
+                width_inches = preferred_width
+            else:
+                width_inches = 3.0
+            height_inches = calculated_height
+        
+        return width_inches, height_inches
+    except Exception as e:
+        print(f"Error calculating image size for {image_path}: {e}")
+        return None, None
 
 
 def generate_memory_book_word():
@@ -233,9 +273,9 @@ def generate_memory_book_word():
         if not has_photo_1973 and not has_latest_photo and not archive_photos:
             continue
         
-        # Colleague name
+        # Colleague name - LEFT aligned (appears on right in RTL)
         paragraph = doc.add_paragraph()
-        paragraph.alignment = WD_ALIGN_PARAGRAPH.RIGHT
+        paragraph.alignment = WD_ALIGN_PARAGRAPH.LEFT
         set_rtl_paragraph(paragraph)
         run = paragraph.add_run(colleague.name)
         run.font.size = Pt(18)
@@ -265,7 +305,16 @@ def generate_memory_book_word():
                 para1_img.alignment = WD_ALIGN_PARAGRAPH.CENTER
                 run1_img = para1_img.add_run()
                 try:
-                    run1_img.add_picture(colleague.photo_1973.path, width=Inches(2.5))
+                    # Calculate size with max height of 5.25 inches
+                    width_inches, height_inches = calculate_image_size_with_max_height(
+                        colleague.photo_1973.path, 
+                        max_height_inches=5.25, 
+                        preferred_width=2.5
+                    )
+                    if width_inches and height_inches:
+                        run1_img.add_picture(colleague.photo_1973.path, width=Inches(width_inches), height=Inches(height_inches))
+                    else:
+                        run1_img.add_picture(colleague.photo_1973.path, width=Inches(2.5))
                 except Exception as e:
                     print(f"Error adding photo_1973: {e}")
             
@@ -286,7 +335,16 @@ def generate_memory_book_word():
                 para2_img.alignment = WD_ALIGN_PARAGRAPH.CENTER
                 run2_img = para2_img.add_run()
                 try:
-                    run2_img.add_picture(colleague.latest_photo.path, width=Inches(2.5))
+                    # Calculate size with max height of 5.25 inches
+                    width_inches, height_inches = calculate_image_size_with_max_height(
+                        colleague.latest_photo.path, 
+                        max_height_inches=5.25, 
+                        preferred_width=2.5
+                    )
+                    if width_inches and height_inches:
+                        run2_img.add_picture(colleague.latest_photo.path, width=Inches(width_inches), height=Inches(height_inches))
+                    else:
+                        run2_img.add_picture(colleague.latest_photo.path, width=Inches(2.5))
                 except Exception as e:
                     print(f"Error adding latest_photo: {e}")
             
@@ -307,7 +365,16 @@ def generate_memory_book_word():
                         paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
                         run = paragraph.add_run()
                         try:
-                            run.add_picture(archive_photo.image.path, width=Inches(3.2))
+                            # Calculate size with max height of 5.25 inches
+                            width_inches, height_inches = calculate_image_size_with_max_height(
+                                archive_photo.image.path, 
+                                max_height_inches=5.25, 
+                                preferred_width=3.2
+                            )
+                            if width_inches and height_inches:
+                                run.add_picture(archive_photo.image.path, width=Inches(width_inches), height=Inches(height_inches))
+                            else:
+                                run.add_picture(archive_photo.image.path, width=Inches(3.2))
                         except Exception as e:
                             print(f"Error adding archive photo: {e}")
                 
@@ -330,10 +397,10 @@ def generate_memory_book_word():
         if not photos.exists():
             continue
         
-        # Category title with page break before
+        # Category title with page break before - LEFT aligned (appears on right in RTL)
         doc.add_page_break()
         paragraph = doc.add_paragraph()
-        paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        paragraph.alignment = WD_ALIGN_PARAGRAPH.LEFT
         set_rtl_paragraph(paragraph)
         run = paragraph.add_run(memory_category.name)
         run.font.size = Pt(20)
