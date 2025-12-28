@@ -1,8 +1,12 @@
 """
 Word Document Generator for College Memory Book
 Generates a .docx file in Arabic (RTL) with meetings, colleagues, and memories.
+Optimized for performance with large datasets.
 """
 import os
+import gc
+import logging
+from functools import lru_cache
 from docx import Document
 from docx.shared import Inches, Pt, RGBColor
 from docx.enum.text import WD_ALIGN_PARAGRAPH
@@ -12,6 +16,53 @@ from docx.oxml import OxmlElement
 from PIL import Image
 import io
 from django.conf import settings
+
+logger = logging.getLogger(__name__)
+
+# Global settings for image optimization
+MAX_IMAGE_WIDTH = 800  # Max width in pixels for embedded images
+MAX_IMAGE_HEIGHT = 600  # Max height in pixels
+JPEG_QUALITY = 75  # JPEG quality for compression
+BATCH_SIZE = 10  # Process images in batches for memory management
+
+
+def optimize_image_for_word(image_path, max_width=MAX_IMAGE_WIDTH, max_height=MAX_IMAGE_HEIGHT):
+    """
+    Optimize an image for embedding in Word document.
+    Returns a BytesIO object with the optimized image, or None if failed.
+    """
+    if not os.path.exists(image_path):
+        return None
+    
+    try:
+        with Image.open(image_path) as img:
+            # Convert to RGB if necessary (handles PNG with transparency, etc.)
+            if img.mode in ('RGBA', 'P', 'LA'):
+                # Create white background for transparent images
+                background = Image.new('RGB', img.size, (255, 255, 255))
+                if img.mode == 'P':
+                    img = img.convert('RGBA')
+                background.paste(img, mask=img.split()[-1] if img.mode in ('RGBA', 'LA') else None)
+                img = background
+            elif img.mode != 'RGB':
+                img = img.convert('RGB')
+            
+            # Calculate new dimensions while maintaining aspect ratio
+            width, height = img.size
+            if width > max_width or height > max_height:
+                ratio = min(max_width / width, max_height / height)
+                new_width = int(width * ratio)
+                new_height = int(height * ratio)
+                img = img.resize((new_width, new_height), Image.Resampling.LANCZOS)
+            
+            # Save to BytesIO
+            buffer = io.BytesIO()
+            img.save(buffer, format='JPEG', quality=JPEG_QUALITY, optimize=True)
+            buffer.seek(0)
+            return buffer
+    except Exception as e:
+        logger.warning(f"Error optimizing image {image_path}: {e}")
+        return None
 
 
 def set_rtl_paragraph(paragraph):
@@ -86,37 +137,107 @@ def add_decorative_separator(doc):
 
 
 def add_image_to_doc(doc, image_path, width_inches=3.0, height_inches=None):
-    """Add an image to the document with proper sizing."""
+    """Add an optimized image to the document with proper sizing."""
     if not os.path.exists(image_path):
         return False
     
     try:
-        # Open image to get dimensions
-        img = Image.open(image_path)
-        img_width, img_height = img.size
+        # Try to use optimized image first
+        optimized_buffer = optimize_image_for_word(image_path)
         
-        # Calculate aspect ratio
-        aspect_ratio = img_width / img_height
+        if optimized_buffer:
+            # Add optimized image
+            paragraph = doc.add_paragraph()
+            paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            run = paragraph.add_run()
+            run.add_picture(optimized_buffer, width=Inches(width_inches))
+            optimized_buffer.close()
+            return True
         
-        # Set width and calculate height if not provided
-        if height_inches is None:
-            height_inches = width_inches / aspect_ratio
-        
-        # Ensure height doesn't exceed page height
-        max_height = 7.0  # Maximum height in inches
-        if height_inches > max_height:
-            height_inches = max_height
-            width_inches = height_inches * aspect_ratio
-        
-        # Add image
+        # Fallback: try to add original image directly
         paragraph = doc.add_paragraph()
         paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
         run = paragraph.add_run()
-        run.add_picture(image_path, width=Inches(width_inches), height=Inches(height_inches))
+        run.add_picture(image_path, width=Inches(width_inches))
+        return True
         
+    except Exception as e:
+        logger.warning(f"Error adding image {image_path}: {e}")
+        return False
+
+
+def add_optimized_image_to_cell(cell, image_path, width_inches=2.8, max_height_inches=None):
+    """Add an optimized image to a table cell with optional max height constraint."""
+    if not image_path or not os.path.exists(image_path):
+        return False
+    
+    try:
+        # If max_height is specified, calculate dimensions first
+        calculated_width = width_inches
+        calculated_height = None
+        if max_height_inches:
+            calculated_width, calculated_height = calculate_image_size_with_max_height(
+                image_path, max_height_inches=max_height_inches, preferred_width=width_inches
+            )
+            if calculated_width and calculated_height:
+                width_inches = calculated_width
+                height_inches = calculated_height
+        
+        optimized_buffer = optimize_image_for_word(image_path)
+        paragraph = cell.paragraphs[0]
+        paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        run = paragraph.add_run()
+        
+        if optimized_buffer:
+            if max_height_inches and calculated_height:
+                run.add_picture(optimized_buffer, width=Inches(width_inches), height=Inches(height_inches))
+            else:
+                run.add_picture(optimized_buffer, width=Inches(width_inches))
+            optimized_buffer.close()
+        else:
+            # Fallback to original
+            if max_height_inches and calculated_height:
+                run.add_picture(image_path, width=Inches(width_inches), height=Inches(height_inches))
+            else:
+                run.add_picture(image_path, width=Inches(width_inches))
         return True
     except Exception as e:
-        print(f"Error adding image {image_path}: {e}")
+        logger.warning(f"Error adding image to cell: {e}")
+        return False
+
+
+def add_optimized_image_to_paragraph(run, image_path, width_inches=2.5, max_height_inches=None):
+    """Add an optimized image to a run in a paragraph with optional max height constraint."""
+    if not image_path or not os.path.exists(image_path):
+        return False
+    
+    try:
+        # If max_height is specified, calculate dimensions first
+        if max_height_inches:
+            calculated_width, calculated_height = calculate_image_size_with_max_height(
+                image_path, max_height_inches=max_height_inches, preferred_width=width_inches
+            )
+            if calculated_width and calculated_height:
+                width_inches = calculated_width
+                height_inches = calculated_height
+        
+        optimized_buffer = optimize_image_for_word(image_path)
+        
+        if optimized_buffer:
+            if max_height_inches and calculated_height:
+                run.add_picture(optimized_buffer, width=Inches(width_inches), height=Inches(height_inches))
+            else:
+                run.add_picture(optimized_buffer, width=Inches(width_inches))
+            optimized_buffer.close()
+        else:
+            # Fallback to original
+            if max_height_inches and calculated_height:
+                run.add_picture(image_path, width=Inches(width_inches), height=Inches(height_inches))
+            else:
+                run.add_picture(image_path, width=Inches(width_inches))
+        return True
+    except Exception as e:
+        logger.warning(f"Error adding image to paragraph: {e}")
         return False
 
 
@@ -230,15 +351,9 @@ def generate_memory_book_word():
                 cell = table.rows[0].cells[j]
                 cell.width = Inches(3.0)
                 
-                # Add image to cell
-                if photo.image and os.path.exists(photo.image.path):
-                    paragraph = cell.paragraphs[0]
-                    paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                    run = paragraph.add_run()
-                    try:
-                        run.add_picture(photo.image.path, width=Inches(2.8))
-                    except Exception as e:
-                        print(f"Error adding meeting photo: {e}")
+                # Add optimized image to cell
+                if photo.image:
+                    add_optimized_image_to_cell(cell, photo.image.path, width_inches=2.8)
                 
                 # Add description if exists
                 if photo.description_ar:
@@ -254,6 +369,9 @@ def generate_memory_book_word():
         # Add spacing between meetings
         doc.add_paragraph()
         add_decorative_separator(doc)
+    
+    # Garbage collection after meetings section
+    gc.collect()
     
     # ============================================
     # 2️⃣ الزملاء (Colleagues)
@@ -304,19 +422,8 @@ def generate_memory_book_word():
                 para1_img = cell1.add_paragraph()
                 para1_img.alignment = WD_ALIGN_PARAGRAPH.CENTER
                 run1_img = para1_img.add_run()
-                try:
-                    # Calculate size with max height of 5.25 inches
-                    width_inches, height_inches = calculate_image_size_with_max_height(
-                        colleague.photo_1973.path, 
-                        max_height_inches=5.25, 
-                        preferred_width=2.5
-                    )
-                    if width_inches and height_inches:
-                        run1_img.add_picture(colleague.photo_1973.path, width=Inches(width_inches), height=Inches(height_inches))
-                    else:
-                        run1_img.add_picture(colleague.photo_1973.path, width=Inches(2.5))
-                except Exception as e:
-                    print(f"Error adding photo_1973: {e}")
+                # Use optimized image with max height of 5.25 inches for Colleagues section
+                add_optimized_image_to_paragraph(run1_img, colleague.photo_1973.path, width_inches=2.5, max_height_inches=5.25)
             
             # الصورة الأخيرة
             cell2 = table.rows[0].cells[1]
@@ -334,19 +441,8 @@ def generate_memory_book_word():
                 para2_img = cell2.add_paragraph()
                 para2_img.alignment = WD_ALIGN_PARAGRAPH.CENTER
                 run2_img = para2_img.add_run()
-                try:
-                    # Calculate size with max height of 5.25 inches
-                    width_inches, height_inches = calculate_image_size_with_max_height(
-                        colleague.latest_photo.path, 
-                        max_height_inches=5.25, 
-                        preferred_width=2.5
-                    )
-                    if width_inches and height_inches:
-                        run2_img.add_picture(colleague.latest_photo.path, width=Inches(width_inches), height=Inches(height_inches))
-                    else:
-                        run2_img.add_picture(colleague.latest_photo.path, width=Inches(2.5))
-                except Exception as e:
-                    print(f"Error adding latest_photo: {e}")
+                # Use optimized image with max height of 5.25 inches for Colleagues section
+                add_optimized_image_to_paragraph(run2_img, colleague.latest_photo.path, width_inches=2.5, max_height_inches=5.25)
             
             doc.add_paragraph()  # Spacing
         
@@ -360,29 +456,18 @@ def generate_memory_book_word():
                     cell = table.rows[0].cells[j]
                     cell.width = Inches(3.5)
                     
-                    if archive_photo.image and os.path.exists(archive_photo.image.path):
-                        paragraph = cell.paragraphs[0]
-                        paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                        run = paragraph.add_run()
-                        try:
-                            # Calculate size with max height of 5.25 inches
-                            width_inches, height_inches = calculate_image_size_with_max_height(
-                                archive_photo.image.path, 
-                                max_height_inches=5.25, 
-                                preferred_width=3.2
-                            )
-                            if width_inches and height_inches:
-                                run.add_picture(archive_photo.image.path, width=Inches(width_inches), height=Inches(height_inches))
-                            else:
-                                run.add_picture(archive_photo.image.path, width=Inches(3.2))
-                        except Exception as e:
-                            print(f"Error adding archive photo: {e}")
+                    if archive_photo.image:
+                        # Use optimized image with max height of 5.25 inches for Colleagues section
+                        add_optimized_image_to_cell(cell, archive_photo.image.path, width_inches=3.2, max_height_inches=5.25)
                 
                 doc.add_paragraph()  # Spacing after row
         
         # Add decorative separator between colleagues
         doc.add_paragraph()
         add_decorative_separator(doc)
+    
+    # Garbage collection after colleagues section
+    gc.collect()
     
     # ============================================
     # 3️⃣ الذكريات (Memories) - By Category
@@ -425,15 +510,9 @@ def generate_memory_book_word():
                 cell = table.rows[0].cells[j]
                 cell.width = Inches(3.0)
                 
-                # Add image to cell
-                if photo.image and os.path.exists(photo.image.path):
-                    paragraph = cell.paragraphs[0]
-                    paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                    run = paragraph.add_run()
-                    try:
-                        run.add_picture(photo.image.path, width=Inches(2.8))
-                    except Exception as e:
-                        print(f"Error adding memory photo: {e}")
+                # Add optimized image to cell
+                if photo.image:
+                    add_optimized_image_to_cell(cell, photo.image.path, width_inches=2.8)
                 
                 # Add description if exists
                 if photo.description_ar:
@@ -449,6 +528,9 @@ def generate_memory_book_word():
         # Add spacing between categories
         doc.add_paragraph()
         add_decorative_separator(doc)
+    
+    # Force garbage collection to free memory
+    gc.collect()
     
     return doc
 
