@@ -140,6 +140,14 @@ backend_deploy() {
     # Copy requirements.txt (in case of new dependencies)
     sudo cp ${BACKEND_SOURCE_PATH}/requirements.txt ${BACKEND_DEPLOY_PATH}/
     
+    # Copy gunicorn.conf.py
+    sudo cp ${BACKEND_SOURCE_PATH}/gunicorn.conf.py ${BACKEND_DEPLOY_PATH}/
+    
+    # Copy nginx config and reload
+    print_status "Updating nginx configuration..."
+    sudo cp ${BACKEND_SOURCE_PATH}/nginx.conf /etc/nginx/sites-available/college-backend
+    sudo nginx -t && sudo systemctl reload nginx
+    
     # Set proper ownership
     print_status "Setting file ownership..."
     sudo chown -R ${WEB_USER}:${WEB_USER} ${BACKEND_DEPLOY_PATH}/api/
@@ -148,6 +156,7 @@ backend_deploy() {
     sudo chown -R ${WEB_USER}:${WEB_USER} ${BACKEND_DEPLOY_PATH}/templates/
     sudo chown ${WEB_USER}:${WEB_USER} ${BACKEND_DEPLOY_PATH}/manage.py
     sudo chown ${WEB_USER}:${WEB_USER} ${BACKEND_DEPLOY_PATH}/requirements.txt
+    sudo chown ${WEB_USER}:${WEB_USER} ${BACKEND_DEPLOY_PATH}/gunicorn.conf.py
     
     # Restart backend service
     print_status "Restarting college-backend service..."
