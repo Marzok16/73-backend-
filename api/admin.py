@@ -249,9 +249,6 @@ class ColleagueAdmin(admin.ModelAdmin):
         ('النبذة التعريفية', {
             'fields': ['description', 'achievements', 'contact_info']
         }),
-        ('الصورة', {
-            'fields': ['photo']
-        }),
         ('نظام الصور المنظم', {
             'fields': ['photo_1973', 'latest_photo'],
             'classes': ['collapse'],
